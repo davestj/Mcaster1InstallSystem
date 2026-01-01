@@ -1,0 +1,149 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  ═════════════════════════════════════════════════════════════════════════════
+  Mcaster1DNAS — macOS XML Configuration Template  (v2.5.3-beta)
+  ═════════════════════════════════════════════════════════════════════════════
+
+  INSTALLED LOCATION (after dragging Mcaster1 folder to /Applications):
+    /Applications/Mcaster1/mcaster1dnas.xml   ← this file
+
+  All paths below are relative to this file's directory:
+    ./web    → /Applications/Mcaster1/web/
+    ./admin  → /Applications/Mcaster1/admin/
+    ./logs   → /Applications/Mcaster1/logs/
+    ./ssl    → /Applications/Mcaster1/ssl/
+
+  FIRST-TIME SETUP:
+    1. PASSWORDS — Change all CHANGE_ME_* values before launching.
+    2. SSL CERT  — See ssl/SSL-SETUP.txt or use the GUI SSL Cert tab.
+
+  Homepage : https://mcaster1.com/mcaster1_dnas.php
+  Support  : https://github.com/davestj/mcaster1dnas/issues
+  ═════════════════════════════════════════════════════════════════════════════
+-->
+<icecast>
+
+    <!-- ── Server identity ───────────────────────────────────────────────── -->
+    <location>Your City, Country</location>
+    <admin>admin@yourdomain.com</admin>
+    <hostname>localhost</hostname>
+    <fileserve>1</fileserve>
+
+    <!-- ── Authentication ────────────────────────────────────────────────── -->
+    <!-- REQUIRED: Change all passwords before going live.                  -->
+    <authentication>
+        <source-password>CHANGE_ME_source</source-password>
+        <relay-password>CHANGE_ME_relay</relay-password>
+        <admin-user>admin</admin-user>
+        <admin-password>CHANGE_ME_admin</admin-password>
+    </authentication>
+
+    <!-- ── Connection limits ─────────────────────────────────────────────── -->
+    <limits>
+        <clients>100</clients>
+        <sources>5</sources>
+        <workers>4</workers>
+        <queue-size>524288</queue-size>
+        <burst-size>65535</burst-size>
+        <client-timeout>30</client-timeout>
+        <header-timeout>15</header-timeout>
+        <source-timeout>10</source-timeout>
+        <song-history-limit>25</song-history-limit>
+    </limits>
+
+    <!-- ── Listen sockets ────────────────────────────────────────────────── -->
+    <!-- Default: localhost-only. Change bind-address to 0.0.0.0 for LAN.  -->
+    <listen-socket>
+        <port>9330</port>
+        <bind-address>127.0.0.1</bind-address>
+        <ssl>0</ssl>
+    </listen-socket>
+
+    <listen-socket>
+        <port>9443</port>
+        <bind-address>127.0.0.1</bind-address>
+        <ssl>1</ssl>
+    </listen-socket>
+
+    <!-- ── File system paths (relative to this config file's directory) ──── -->
+    <paths>
+        <basedir>.</basedir>
+        <logdir>./logs</logdir>
+        <webroot>./web</webroot>
+        <adminroot>./admin</adminroot>
+        <pidfile>./logs/mcaster1.pid</pidfile>
+
+        <!-- Combined PEM (private key + certificate).                       -->
+        <!-- Generate with the SSL Cert tab in Mcaster1DNAS.app             -->
+        <!-- or see ssl/SSL-SETUP.txt for command-line instructions.        -->
+        <ssl-certificate>./ssl/localhost.pem</ssl-certificate>
+
+        <!-- URL alias: visiting / redirects to /status.xsl                 -->
+        <alias source="/" destination="/status.xsl"/>
+    </paths>
+
+    <!-- ── Logging ───────────────────────────────────────────────────────── -->
+    <logging>
+        <accesslog>access.log</accesslog>
+        <errorlog>error.log</errorlog>
+        <playlistlog>playlist.log</playlistlog>
+        <!-- loglevel: 1=error 2=warn 3=info 4=debug                        -->
+        <loglevel>3</loglevel>
+        <logsize>10000</logsize>
+        <logarchive>1</logarchive>
+    </logging>
+
+    <!-- ── Security ──────────────────────────────────────────────────────── -->
+    <security>
+        <!-- chroot requires root — leave 0 for standard installs           -->
+        <chroot>0</chroot>
+    </security>
+
+    <!-- ── HTTP Response Headers (CORS for web players) ─────────────────── -->
+    <http-headers>
+        <header name="Access-Control-Allow-Origin"  value="*"/>
+        <header name="Access-Control-Allow-Methods" value="GET, OPTIONS"/>
+        <header name="Access-Control-Allow-Headers"
+                value="Origin, X-Requested-With, Content-Type, Accept, Icy-MetaData"/>
+    </http-headers>
+
+    <!-- ── Mount points ──────────────────────────────────────────────────── -->
+    <!--
+      Each <mount> defines a stream endpoint.
+      Encoders connect to: http://localhost:9330/live  (with source-password)
+      Listeners tune in at:
+        http://localhost:9330/live   (HTTP)
+        https://localhost:9443/live  (HTTPS — requires ssl-certificate)
+    -->
+
+    <!-- Example: Live broadcast -->
+    <mount>
+        <mount-name>/live</mount-name>
+        <mount-type>live</mount-type>
+        <max-listeners>100</max-listeners>
+        <public>1</public>
+        <stream-name>My Radio Station</stream-name>
+        <stream-description>Live broadcast stream</stream-description>
+        <stream-genre>Music</stream-genre>
+        <bitrate>128</bitrate>
+        <icy-dj-handle>DJ Name</icy-dj-handle>
+        <icy-show-title>Live Show</icy-show-title>
+        <icy-requests-enabled>0</icy-requests-enabled>
+    </mount>
+
+    <!-- Example: Podcast / on-demand -->
+    <mount>
+        <mount-name>/podcast</mount-name>
+        <mount-type>podcast</mount-type>
+        <max-listeners>100</max-listeners>
+        <public>1</public>
+        <stream-name>My Podcast</stream-name>
+        <stream-description>Podcast content</stream-description>
+        <stream-genre>Talk</stream-genre>
+        <bitrate>96</bitrate>
+        <icy-podcast-host>Host Name</icy-podcast-host>
+        <icy-show-title>The Podcast</icy-show-title>
+        <icy-requests-enabled>0</icy-requests-enabled>
+    </mount>
+
+</icecast>

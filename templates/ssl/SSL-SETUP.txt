@@ -1,0 +1,49 @@
+SSL Certificate Setup — Mcaster1DNAS
+=====================================
+
+The HTTPS listener on port 9443 requires a TLS certificate.
+
+The ssl-certificate path in mcaster1dnas.yaml points to:
+  ./ssl/localhost.pem    (= /Applications/Mcaster1/ssl/localhost.pem)
+
+This combined PEM file must contain the PRIVATE KEY block first,
+followed by the CERTIFICATE block.
+
+─────────────────────────────────────────────────────────────────────────────
+OPTION 1 — Generate via the GUI (recommended)
+─────────────────────────────────────────────────────────────────────────────
+1. Open Mcaster1DNAS.app
+2. Click the ⚙ Config button → go to the "SSL Cert" tab
+3. Fill in your details and click "Generate Self-Signed Certificate"
+4. Restart the server
+
+─────────────────────────────────────────────────────────────────────────────
+OPTION 2 — Generate via Terminal (localhost self-signed)
+─────────────────────────────────────────────────────────────────────────────
+cd /Applications/Mcaster1/ssl
+
+openssl req -x509 -newkey rsa:2048 -nodes -days 825 \
+  -subj "/C=US/ST=TX/L=Dallas/O=Mcaster1DNAS/OU=Local/CN=localhost" \
+  -addext "subjectAltName=DNS:localhost,IP:127.0.0.1" \
+  -keyout localhost.key -out localhost.crt
+
+cat localhost.key localhost.crt > localhost.pem
+
+─────────────────────────────────────────────────────────────────────────────
+OPTION 3 — Use a production certificate (Let's Encrypt, ZeroSSL, etc.)
+─────────────────────────────────────────────────────────────────────────────
+Combine your private key and full-chain certificate into a single .pem:
+
+  cat yourdomain.key fullchain.pem > /Applications/Mcaster1/ssl/yourdomain.pem
+
+Update mcaster1dnas.yaml:
+  ssl-certificate: "./ssl/yourdomain.pem"
+
+─────────────────────────────────────────────────────────────────────────────
+NOTES
+─────────────────────────────────────────────────────────────────────────────
+• Self-signed certificates cause browser warnings — acceptable for local use.
+• For LAN or internet access, use a certificate from a trusted CA.
+• Never share or commit your private key.
+• Regenerate certificates before they expire (check the SSL Cert tab for
+  the expiry date of your current certificate).

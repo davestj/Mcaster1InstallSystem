@@ -1,0 +1,61 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<!--
+  Mcaster1DNAS macOS Background Service — LaunchAgent
+  =====================================================
+  This plist runs the headless mcaster1 server binary as a per-user macOS
+  background service (LaunchAgent).  It starts automatically when you log in
+  and restarts automatically if the server crashes.
+
+  PORTS:  HTTP  9330  •  HTTPS  9443   (differ from GUI app: 9033/9344)
+  CONFIG: /Applications/Mcaster1/mcaster1dnas-service.yaml
+
+  Managing the service:
+    Install & start : run /Applications/Mcaster1/install-service.sh
+    Stop  : launchctl unload ~/Library/LaunchAgents/com.mcaster1.mcaster1dnas.plist
+    Start : launchctl load   ~/Library/LaunchAgents/com.mcaster1.mcaster1dnas.plist
+    Status: launchctl list com.mcaster1.mcaster1dnas
+
+  Homebrew (after brew install --cask mcaster1dnas):
+    Start : brew services start mcaster1dnas
+    Stop  : brew services stop  mcaster1dnas
+    Status: brew services list
+-->
+<plist version="1.0">
+<dict>
+    <!-- Service identity -->
+    <key>Label</key>
+    <string>com.mcaster1.mcaster1dnas</string>
+
+    <!-- Binary + arguments -->
+    <key>ProgramArguments</key>
+    <array>
+        <string>/Applications/Mcaster1/bin/mcaster1</string>
+        <string>-c</string>
+        <string>/Applications/Mcaster1/mcaster1dnas-service.yaml</string>
+    </array>
+
+    <!-- Working directory — all relative paths in the YAML resolve from here -->
+    <key>WorkingDirectory</key>
+    <string>/Applications/Mcaster1</string>
+
+    <!-- Start automatically when the user logs in -->
+    <key>RunAtLoad</key>
+    <true/>
+
+    <!-- Restart automatically if the process exits -->
+    <key>KeepAlive</key>
+    <true/>
+
+    <!-- Redirect server stdout/stderr to the log directory -->
+    <key>StandardOutPath</key>
+    <string>/Applications/Mcaster1/logs/mcaster1-service.log</string>
+
+    <key>StandardErrorPath</key>
+    <string>/Applications/Mcaster1/logs/mcaster1-service.log</string>
+
+    <!-- Throttle rapid restarts: wait 10 s before restarting after a crash -->
+    <key>ThrottleInterval</key>
+    <integer>10</integer>
+</dict>
+</plist>

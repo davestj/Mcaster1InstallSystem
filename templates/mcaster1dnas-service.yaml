@@ -1,0 +1,151 @@
+---
+# ═══════════════════════════════════════════════════════════════════════════════
+# Mcaster1DNAS — macOS Background Service Configuration  (v2.5.3-beta)
+# ═══════════════════════════════════════════════════════════════════════════════
+#
+# INSTALLED LOCATION:
+#   /Applications/Mcaster1/mcaster1dnas-service.yaml   ← this file
+#
+# USED BY:
+#   • /Applications/Mcaster1/bin/mcaster1   (headless background service)
+#   • LaunchAgent: ~/Library/LaunchAgents/com.mcaster1.mcaster1dnas.plist
+#
+# PORTS (different from the GUI app — avoids port conflicts):
+#   HTTP  → 9330   Listeners: http://your-ip:9330/<mount>
+#   HTTPS → 9443   Listeners: https://your-ip:9443/<mount>
+#   Encoders connect to http://your-ip:9330/<mount> with source-password
+#
+# The GUI app (Mcaster1DNAS.app) runs on ports 9033/9344 — both can coexist.
+#
+# FIRST-TIME SETUP:
+#   1. PASSWORDS — Change all CHANGE_ME_* values before starting the service.
+#   2. BIND ADDRESS — 0.0.0.0 allows LAN/internet access.
+#                     Change to 127.0.0.1 for localhost-only.
+#   3. SSL CERT   — See ssl/SSL-SETUP.txt for certificate generation.
+#
+# MANAGING THE SERVICE:
+#   Install & start : ./install-service.sh
+#   Stop            : launchctl unload ~/Library/LaunchAgents/com.mcaster1.mcaster1dnas.plist
+#   Start           : launchctl load   ~/Library/LaunchAgents/com.mcaster1.mcaster1dnas.plist
+#   Uninstall       : open /Applications/Mcaster1/Uninstall\ Mcaster1DNAS.command
+#
+# Homepage : https://mcaster1.com/mcaster1_dnas.php
+# Support  : https://github.com/davestj/mcaster1dnas/issues
+# ═══════════════════════════════════════════════════════════════════════════════
+
+location: "Your City, Country"
+admin:    "admin@yourdomain.com"
+hostname: "localhost"
+fileserve: true
+
+# ── Authentication ─────────────────────────────────────────────────────────────
+# REQUIRED: Change all passwords before going live.
+authentication:
+  source-password: "CHANGE_ME_source"
+  relay-password:  "CHANGE_ME_relay"
+  admin-user:      "admin"
+  admin-password:  "CHANGE_ME_admin"
+
+# ── Connection limits ─────────────────────────────────────────────────────────
+limits:
+  clients:            250     # max simultaneous listener connections
+  sources:            10      # max simultaneous source (encoder) connections
+  workers:            4       # number of internal worker threads
+  queue-size:         524288  # listener audio queue size in bytes (512 KB)
+  burst-size:         65535   # burst buffer on new connection (64 KB)
+  client-timeout:     30      # drop idle listeners after N seconds
+  header-timeout:     15      # drop sources taking > N seconds to send headers
+  source-timeout:     10      # drop sources silent for > N seconds
+  song-history-limit: 25      # /songdata JSON API: past track count to keep
+
+# ── Listen sockets ────────────────────────────────────────────────────────────
+# 0.0.0.0 = accept connections from all network interfaces (LAN + internet).
+# Change to 127.0.0.1 to restrict to localhost only.
+listen-sockets:
+  - port:         9330
+    bind-address: "0.0.0.0"
+    ssl:          false
+
+  - port:         9443
+    bind-address: "0.0.0.0"
+    ssl:          true
+
+# ── File system paths (all relative to this config file's directory) ──────────
+# The launchd plist sets WorkingDirectory to /Applications/Mcaster1/ so all
+# relative paths below resolve to that directory automatically.
+paths:
+  basedir:         "."
+  logdir:          "./logs"
+  webroot:         "./web"
+  adminroot:       "./admin"
+  pidfile:         "./logs/mcaster1.pid"
+
+  # Combined PEM: private key block followed by certificate block.
+  # Generate with: open /Applications/Mcaster1/Mcaster1DNAS.app → SSL Cert tab
+  # Or see ssl/SSL-SETUP.txt for command-line instructions.
+  ssl-certificate: "./ssl/localhost.pem"
+
+  # URL alias: visiting / redirects to the public status page
+  aliases:
+    - source:      "/"
+      destination: "/status.xsl"
+
+# ── Logging ───────────────────────────────────────────────────────────────────
+logging:
+  accesslog:
+    name:    "access.log"
+    archive: true
+  errorlog:
+    name:    "error.log"
+    level:   "info"     # info is recommended for production; use debug to troubleshoot
+    archive: true
+  playlistlog:
+    name:    "playlist.log"
+    archive: true
+  logsize:    10000     # rotate logs at ~10 MB
+  logarchive: true
+
+# ── Security ──────────────────────────────────────────────────────────────────
+security:
+  chroot: false
+
+# ── HTTP Response Headers (CORS for web players) ──────────────────────────────
+http-headers:
+  - name:  "Access-Control-Allow-Origin"
+    value: "*"
+  - name:  "Access-Control-Allow-Methods"
+    value: "GET, OPTIONS"
+  - name:  "Access-Control-Allow-Headers"
+    value: "Origin, X-Requested-With, Content-Type, Accept, Icy-MetaData"
+
+# ── Mount points ──────────────────────────────────────────────────────────────
+# Encoders connect to:  http://<hostname>:9330<mount-name>  with source-password
+# Listeners tune in to: http://<hostname>:9330<mount-name>  (HTTP)
+#                       https://<hostname>:9443<mount-name> (HTTPS/TLS)
+#
+mounts:
+  # ── Live broadcast ──────────────────────────────────────────────────────────
+  - mount-name:            "/live"
+    mount-type:            "live"
+    max-listeners:         250
+    public:                1
+    stream-name:           "My Radio Station"
+    stream-description:    "Live broadcast stream"
+    genre:                 "Music"
+    bitrate:               "128"
+    icy-dj-handle:         "DJ Name"
+    icy-show-title:        "Live Show"
+    icy-requests-enabled:  false
+
+  # ── Podcast / on-demand ────────────────────────────────────────────────────
+  - mount-name:            "/podcast"
+    mount-type:            "podcast"
+    max-listeners:         250
+    public:                1
+    stream-name:           "My Podcast"
+    stream-description:    "Podcast content"
+    genre:                 "Talk"
+    bitrate:               "96"
+    icy-podcast-host:      "Host Name"
+    icy-show-title:        "The Podcast"
+    icy-requests-enabled:  false
