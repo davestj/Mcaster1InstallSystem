@@ -1,0 +1,265 @@
+# ─────────────────────────────────────────────────────────────────────────────
+# Mcaster1DNAS macOS Installer Specification
+# Format: mis/1  (Mcaster1 Install Spec — YAML)
+#
+# App:       Mcaster1DNAS  v2.5.3-beta
+# Bundle ID: com.mcaster1.Mcaster1DNAS
+# Author:    David St John (Saint John)
+# Platform:  macOS 12.0+ (arm64 + x86_64)
+#
+# Usage:
+#   1. Load this file in Mcaster1 Install Studio (File > Open Project)
+#   2. Place the built Mcaster1DNAS.app in ./payload/
+#   3. Adjust signing identity in the Security tab if distributing publicly
+#   4. Click Build
+#
+# Payload source path: /Users/dstjohn/dev/01_mcaster1.com/mcaster1dnas/
+#   Built app:          macos/build-qt/Mcaster1DNAS.app
+#   Config:             mcaster1dnas.yaml
+#   Console config:     mcaster1dnas-console.yaml
+#   SSL cert:           ssl/localhost.pem
+#   Docs:               docs/
+# ─────────────────────────────────────────────────────────────────────────────
+
+format: mis/1
+
+app:
+  name:        "Mcaster1DNAS"
+  version:     "2.5.3-beta"
+  publisher:   "Mcaster1"
+  description: >
+    Mcaster1DNAS (Digital Network Audio Server) is a fork/evolution of
+    Icecast 2.x extended with ICY 2.2 metadata, YAML configuration,
+    per-listener SSL enforcement, song history REST API, and a native
+    Qt6 GUI for macOS.
+  url:         "https://mcaster1.com"
+  supportUrl:  "https://github.com/davestj/mcaster1dnas/issues"
+  identifier:  "com.mcaster1.Mcaster1DNAS"
+  iconPath:    "payload/Mcaster1DNAS.app/Contents/Resources/mcaster1.icns"
+  licenseFile: ""
+
+defaults:
+  install-dir:
+    macos:   "/Applications/Mcaster1DNAS"
+    windows: "C:\\Program Files\\Mcaster1\\Mcaster1DNAS"
+    linux:   "/opt/mcaster1/mcaster1dnas"
+  require-admin:      true
+  allow-custom-dir:   true
+  launch-after:       true
+  create-uninstaller: true
+
+targets:
+  - macos
+
+theme:
+  accent-color:      "#00c9ff"
+  background-color:  "#1a1a2e"
+  dark-mode:         true
+  banner-image:      ""
+  side-panel-image:  ""
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Components
+# ─────────────────────────────────────────────────────────────────────────────
+components:
+
+  - id:          core
+    name:        "Core Application"
+    description: "Mcaster1DNAS app bundle and required runtime."
+    required:    true
+    selected:    true
+    platforms:
+      - macos
+    files:
+      # Main application bundle — already has Qt6 frameworks + Homebrew dylibs baked in
+      - src:  "Mcaster1DNAS.app"
+        dst:  "{install-dir}/Mcaster1DNAS.app"
+        isDir: true
+
+  - id:          config
+    name:        "Default Configuration"
+    description: "Pre-configured YAML config files for standalone and console modes."
+    required:    false
+    selected:    true
+    platforms:
+      - macos
+    files:
+      # GUI / standalone config (ports 9330/9443)
+      - src:  "mcaster1dnas.yaml"
+        dst:  "{install-dir}/mcaster1dnas.yaml"
+
+      # Console / service config (ports 9330/9443 — intended for launchd)
+      - src:  "mcaster1dnas-console.yaml"
+        dst:  "{install-dir}/mcaster1dnas-console.yaml"
+
+  - id:          ssl
+    name:        "Local SSL Certificate"
+    description: "Self-signed certificate for localhost HTTPS (ports 9443)."
+    required:    false
+    selected:    true
+    platforms:
+      - macos
+    files:
+      - src:  "ssl/localhost.pem"
+        dst:  "{install-dir}/ssl/localhost.pem"
+
+  - id:          webfiles
+    name:        "Web & Admin Interface"
+    description: "XSL templates for the web status page and admin interface."
+    required:    false
+    selected:    true
+    platforms:
+      - macos
+    files:
+      - src:  "web"
+        dst:  "{install-dir}/web"
+        isDir: true
+      - src:  "admin"
+        dst:  "{install-dir}/admin"
+        isDir: true
+
+  - id:          docs
+    name:        "Documentation"
+    description: "HTML reference documentation (opens in browser)."
+    required:    false
+    selected:    true
+    platforms:
+      - macos
+    files:
+      - src:  "docs"
+        dst:  "{install-dir}/docs"
+        isDir: true
+
+  - id:          logdir
+    name:        "Log Directory"
+    description: "Empty logs directory pre-created at install time."
+    required:    false
+    selected:    true
+    platforms:
+      - macos
+    files:
+      - src:  "logs/.keep"
+        dst:  "{install-dir}/logs/.keep"
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Shortcuts
+# ─────────────────────────────────────────────────────────────────────────────
+shortcuts:
+
+  - name:   "Mcaster1DNAS"
+    target: "{install-dir}/Mcaster1DNAS.app"
+    type:   app
+
+  - name:   "Mcaster1DNAS Documentation"
+    target: "{install-dir}/docs/index.html"
+    type:   url
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Prerequisites
+# These are checked before install begins (PrerequisitesPage in runtime wizard).
+# All are advisory (non-blocking) — Homebrew dylibs are baked into the bundle.
+# ─────────────────────────────────────────────────────────────────────────────
+prerequisites:
+
+  - id:         macos-version
+    name:       "macOS 12.0 Monterey or later"
+    checkCmd:   "[ $(sw_vers -productVersion | cut -d. -f1) -ge 12 ] && echo ok"
+    installCmd: "https://support.apple.com/en-us/102662"
+    platforms:
+      - macos
+
+  - id:         homebrew-optional
+    name:       "Homebrew (optional — for source builds)"
+    checkCmd:   "which brew > /dev/null 2>&1 && echo ok"
+    installCmd: "https://brew.sh"
+    platforms:
+      - macos
+
+  - id:         xcode-cli
+    name:       "Xcode Command Line Tools (optional)"
+    checkCmd:   "xcode-select -p > /dev/null 2>&1 && echo ok"
+    installCmd: "xcode-select --install"
+    platforms:
+      - macos
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Custom Actions
+# ─────────────────────────────────────────────────────────────────────────────
+custom-actions:
+
+  - id:       fix-permissions
+    trigger:  after-install
+    type:     shell
+    command:  "chmod +x \"{install-dir}/Mcaster1DNAS.app/Contents/MacOS/Mcaster1DNAS\""
+    platforms:
+      - macos
+
+  - id:       codesign-verify
+    trigger:  after-install
+    type:     shell
+    command:  "codesign --verify --deep --strict \"{install-dir}/Mcaster1DNAS.app\" && echo 'Codesign OK' || echo 'WARNING: Codesign verification failed'"
+    platforms:
+      - macos
+
+  - id:       create-logs-dir
+    trigger:  before-install
+    type:     shell
+    command:  "mkdir -p \"{install-dir}/logs\""
+    platforms:
+      - macos
+
+  - id:       quarantine-remove
+    trigger:  after-install
+    type:     shell
+    command:  "xattr -dr com.apple.quarantine \"{install-dir}/Mcaster1DNAS.app\" 2>/dev/null || true"
+    platforms:
+      - macos
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Signing
+# ─────────────────────────────────────────────────────────────────────────────
+signing:
+  macos-signer:    ""
+  macos-team-id:   ""
+  macos-hardened:  true
+  macos-notarize:  false
+  macos-profile:   ""
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Build metadata
+# Notes for the macOS build pipeline:
+#
+#   Homebrew deps (baked into bundle by MacOsBackend):
+#     libogg libvorbis theora speex openssl@3 curl libxml2 libxslt libyaml
+#
+#   Source build commands (from project root):
+#     cd /Users/dstjohn/dev/01_mcaster1.com/mcaster1dnas
+#     ./build-macos.sh              # builds server binary
+#     make gui                      # builds Mcaster1DNAS.app
+#
+#   Payload assembly:
+#     mkdir -p payload/ssl payload/docs payload/logs
+#     cp -R macos/build-qt/Mcaster1DNAS.app  payload/
+#     cp mcaster1dnas.yaml                   payload/
+#     cp mcaster1dnas-console.yaml           payload/
+#     cp -R ssl/                             payload/ssl/
+#     cp -R web/                             payload/web/
+#     cp -R admin/                           payload/admin/
+#     cp -R docs/                            payload/docs/
+#     touch                                  payload/logs/.keep
+#
+#   macOS install paths:
+#     App bundle:   /Applications/Mcaster1DNAS/Mcaster1DNAS.app
+#     Config:       /Applications/Mcaster1DNAS/mcaster1dnas.yaml
+#     Console cfg:  /Applications/Mcaster1DNAS/mcaster1dnas-console.yaml
+#     SSL cert:     /Applications/Mcaster1DNAS/ssl/localhost.pem
+#     Web root:     /Applications/Mcaster1DNAS/web/
+#     Admin root:   /Applications/Mcaster1DNAS/admin/
+#     Logs:         /Applications/Mcaster1DNAS/logs/
+#     Docs:         /Applications/Mcaster1DNAS/docs/
+#
+#   Run after install:
+#     open /Applications/Mcaster1DNAS/Mcaster1DNAS.app
+#     # Browse to: http://127.0.0.1:9330/status.xsl
+#     # HTTPS:     https://127.0.0.1:9443/status.xsl
+# ─────────────────────────────────────────────────────────────────────────────

@@ -1,0 +1,137 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Qt6.props — Shared Qt6 property sheet for Mcaster1InstallSystem (Windows/MSVC)
+  ─────────────────────────────────────────────────────────────────────────────
+  Usage:
+    Option A (Recommended): Install "Qt Visual Studio Tools" extension from VS Marketplace.
+      The extension auto-discovers Qt installations and handles MOC/RCC automatically.
+      Set $(QtInstall) in each vcxproj to your registered Qt version name,
+      e.g. "6.8.1_msvc2022_64".  This file supplements it with vcpkg paths.
+
+    Option B: Install Qt6 via vcpkg:
+      vcpkg install qt6-base:x64-windows qt6-svg:x64-windows qt6-concurrent:x64-windows
+      Set environment variable VCPKG_ROOT to your vcpkg installation root.
+
+    Option C: Standalone Qt Installer from qt.io.
+      Set QT_MSVC_DIR to your Qt6 msvc2022_64 directory, e.g.:
+      [System Properties > Environment Variables]
+      QT_MSVC_DIR = C:\Qt\6.8.1\msvc2022_64
+
+  Priority: Qt VS Tools QtMsBuild > explicit QT_MSVC_DIR > vcpkg VCPKG_ROOT
+  ─────────────────────────────────────────────────────────────────────────────
+-->
+<Project xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <!-- ── User-configurable Qt root ─────────────────────────────────────────── -->
+  <!--
+    Override by setting QT_MSVC_DIR in your environment or passing:
+      /p:QtMsvcDir="C:\Qt\6.8.1\msvc2022_64"
+    on the MSBuild command line.
+  -->
+  <PropertyGroup Label="QtDirectories">
+
+    <!-- vcpkg-installed Qt6 (default: requires VCPKG_ROOT env var) -->
+    <VcpkgQt6Dir Condition="'$(VCPKG_ROOT)' != ''">$(VCPKG_ROOT)\installed\x64-windows</VcpkgQt6Dir>
+
+    <!--
+      Standalone Qt Installer path.
+      Default: C:\Qt\6.x.x\msvc2022_64  (Qt installed at C:\Qt)
+      Override with:
+        [env]  QT_MSVC_DIR = C:\Qt\6.8.1\msvc2022_64
+        [cli]  /p:QtMsvcDir="C:\Qt\6.8.1\msvc2022_64"
+    -->
+    <StandaloneQt6Dir Condition="'$(QT_MSVC_DIR)' != ''">$(QT_MSVC_DIR)</StandaloneQt6Dir>
+
+    <!--
+      Auto-detect: if QT_MSVC_DIR not set, try common paths under C:\Qt
+      Qt Installer typically creates: C:\Qt\<ver>\msvc2022_64\
+      We probe several common version subdirs — first match wins.
+    -->
+    <StandaloneQt6Dir Condition="'$(StandaloneQt6Dir)' == '' AND Exists('C:\Qt\6.9.0\msvc2022_64')">C:\Qt\6.9.0\msvc2022_64</StandaloneQt6Dir>
+    <StandaloneQt6Dir Condition="'$(StandaloneQt6Dir)' == '' AND Exists('C:\Qt\6.8.1\msvc2022_64')">C:\Qt\6.8.1\msvc2022_64</StandaloneQt6Dir>
+    <StandaloneQt6Dir Condition="'$(StandaloneQt6Dir)' == '' AND Exists('C:\Qt\6.8.0\msvc2022_64')">C:\Qt\6.8.0\msvc2022_64</StandaloneQt6Dir>
+    <StandaloneQt6Dir Condition="'$(StandaloneQt6Dir)' == '' AND Exists('C:\Qt\6.7.3\msvc2022_64')">C:\Qt\6.7.3\msvc2022_64</StandaloneQt6Dir>
+    <StandaloneQt6Dir Condition="'$(StandaloneQt6Dir)' == '' AND Exists('C:\Qt\6.7.2\msvc2022_64')">C:\Qt\6.7.2\msvc2022_64</StandaloneQt6Dir>
+    <StandaloneQt6Dir Condition="'$(StandaloneQt6Dir)' == '' AND Exists('C:\Qt\6.6.3\msvc2022_64')">C:\Qt\6.6.3\msvc2022_64</StandaloneQt6Dir>
+
+    <!-- Active Qt dir: prefer explicit standalone, else vcpkg -->
+    <Qt6Dir Condition="'$(StandaloneQt6Dir)' != ''">$(StandaloneQt6Dir)</Qt6Dir>
+    <Qt6Dir Condition="'$(Qt6Dir)' == '' AND '$(VcpkgQt6Dir)' != ''">$(VcpkgQt6Dir)</Qt6Dir>
+
+    <!-- Fallback: Qt VS Tools sets $(QTDIR) via qt.props — use it if available -->
+    <Qt6Dir Condition="'$(Qt6Dir)' == '' AND '$(QTDIR)' != ''">$(QTDIR)</Qt6Dir>
+
+  </PropertyGroup>
+
+  <!-- ── Include directories ───────────────────────────────────────────────── -->
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories Condition="'$(Qt6Dir)' != ''">
+        $(Qt6Dir)\include;
+        $(Qt6Dir)\include\QtCore;
+        $(Qt6Dir)\include\QtGui;
+        $(Qt6Dir)\include\QtWidgets;
+        $(Qt6Dir)\include\QtSvg;
+        $(Qt6Dir)\include\QtSvgWidgets;
+        $(Qt6Dir)\include\QtConcurrent;
+        $(Qt6Dir)\include\QtNetwork;
+        %(AdditionalIncludeDirectories)
+      </AdditionalIncludeDirectories>
+
+      <!-- Qt requires Unicode mode on Windows -->
+      <PreprocessorDefinitions>UNICODE;_UNICODE;WIN32;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+
+      <!-- Qt emits C4127 (constant conditional) which is harmless -->
+      <DisableSpecificWarnings>4127;4251;4702;%(DisableSpecificWarnings)</DisableSpecificWarnings>
+    </ClCompile>
+
+    <!-- ── Linker: Qt6 library directories ──────────────────────────────── -->
+    <Link>
+      <AdditionalLibraryDirectories Condition="'$(Qt6Dir)' != ''">
+        $(Qt6Dir)\lib;
+        %(AdditionalLibraryDirectories)
+      </AdditionalLibraryDirectories>
+    </Link>
+  </ItemDefinitionGroup>
+
+  <!-- ── Debug configuration: Qt6 debug libs ───────────────────────────────── -->
+  <ItemDefinitionGroup Condition="'$(Configuration)'=='Debug'">
+    <Link>
+      <AdditionalDependencies>
+        Qt6Cored.lib;Qt6Guid.lib;Qt6Widgetsd.lib;Qt6Svgd.lib;Qt6SvgWidgetsd.lib;Qt6Concurrentd.lib;
+        %(AdditionalDependencies)
+      </AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+
+  <!-- ── Release configuration: Qt6 release libs ───────────────────────────── -->
+  <ItemDefinitionGroup Condition="'$(Configuration)'=='Release'">
+    <Link>
+      <AdditionalDependencies>
+        Qt6Core.lib;Qt6Gui.lib;Qt6Widgets.lib;Qt6Svg.lib;Qt6SvgWidgets.lib;Qt6Concurrent.lib;
+        %(AdditionalDependencies)
+      </AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+
+  <!-- ── Qt DLL output copy (post-build) ───────────────────────────────────── -->
+  <!--
+    Uncomment to auto-copy Qt6 DLLs to your output directory during development.
+    For distribution, use windeployqt.exe instead.
+  -->
+  <!--
+  <Target Name="CopyQt6Dlls" AfterTargets="Build" Condition="'$(Qt6Dir)' != ''">
+    <ItemGroup>
+      <Qt6DllFiles Include="$(Qt6Dir)\bin\Qt6Core$(QtDllSuffix).dll" />
+      <Qt6DllFiles Include="$(Qt6Dir)\bin\Qt6Gui$(QtDllSuffix).dll" />
+      <Qt6DllFiles Include="$(Qt6Dir)\bin\Qt6Widgets$(QtDllSuffix).dll" />
+      <Qt6DllFiles Include="$(Qt6Dir)\bin\Qt6Svg$(QtDllSuffix).dll" />
+      <Qt6DllFiles Include="$(Qt6Dir)\bin\Qt6SvgWidgets$(QtDllSuffix).dll" />
+      <Qt6DllFiles Include="$(Qt6Dir)\bin\Qt6Concurrent$(QtDllSuffix).dll" />
+    </ItemGroup>
+    <Copy SourceFiles="@(Qt6DllFiles)" DestinationFolder="$(OutDir)"
+          SkipUnchangedFiles="true" ContinueOnError="true" />
+  </Target>
+  -->
+
+</Project>

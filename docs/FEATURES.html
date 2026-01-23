@@ -1,0 +1,531 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8"/>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Mcaster1 Install Studio — Features</title>
+  <style>
+    /* ── Design tokens ─────────────────────────────────────────────────── */
+    :root {
+      --accent:    #00c9ff;
+      --accent2:   #005fff;
+      --bg:        #0f0f1a;
+      --bg2:       #1a1a2e;
+      --bg3:       #22223a;
+      --border:    #2a2a4a;
+      --text:      #e0e0f0;
+      --text-dim:  #888899;
+      --green:     #66bb6a;
+      --amber:     #ffb74d;
+      --red:       #ef5350;
+      --radius:    10px;
+    }
+
+    /* ── Base ──────────────────────────────────────────────────────────── */
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      background: var(--bg);
+      color: var(--text);
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+      font-size: 15px;
+      line-height: 1.65;
+    }
+
+    a { color: var(--accent); text-decoration: none; }
+    a:hover { text-decoration: underline; }
+
+    /* ── Layout wrapper ────────────────────────────────────────────────── */
+    .page { max-width: 1080px; margin: 0 auto; padding: 40px 24px 80px; }
+
+    /* ── Hero ──────────────────────────────────────────────────────────── */
+    .hero {
+      text-align: center;
+      padding: 60px 20px 48px;
+      background: linear-gradient(160deg, var(--bg2) 0%, var(--bg) 100%);
+      border-radius: var(--radius);
+      border: 1px solid var(--border);
+      margin-bottom: 48px;
+    }
+    .hero img { width: 96px; height: 96px; margin-bottom: 20px; }
+    .hero h1 {
+      font-size: 2.4rem;
+      font-weight: 700;
+      background: linear-gradient(90deg, var(--accent), var(--accent2));
+      -webkit-background-clip: text;
+      -webkit-text-fill-color: transparent;
+      background-clip: text;
+    }
+    .hero p.tagline {
+      font-size: 1.1rem;
+      color: var(--text-dim);
+      margin-top: 12px;
+      max-width: 560px;
+      margin-left: auto;
+      margin-right: auto;
+    }
+    .badges {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: center;
+      margin-top: 24px;
+    }
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 4px 12px;
+      border-radius: 20px;
+      font-size: 12px;
+      font-weight: 600;
+      letter-spacing: 0.3px;
+    }
+    .badge-blue   { background: #1a4080; color: #79b8ff; }
+    .badge-green  { background: #1a3a1a; color: var(--green); }
+    .badge-grey   { background: #2a2a3a; color: var(--text-dim); }
+    .badge-orange { background: #3a2a0a; color: var(--amber); }
+
+    /* ── Section headers ───────────────────────────────────────────────── */
+    h2 {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--accent);
+      margin-bottom: 20px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+    h3 {
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 10px;
+    }
+    .section { margin-bottom: 56px; }
+
+    /* ── Feature grid ──────────────────────────────────────────────────── */
+    .feature-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(300px, 1fr));
+      gap: 20px;
+    }
+    .feature-card {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 20px 22px;
+      transition: border-color 0.2s, transform 0.15s;
+    }
+    .feature-card:hover {
+      border-color: var(--accent);
+      transform: translateY(-2px);
+    }
+    .feature-icon {
+      font-size: 1.6rem;
+      margin-bottom: 10px;
+      display: block;
+    }
+    .feature-card h3 {
+      font-size: 1rem;
+      color: var(--accent);
+    }
+    .feature-card p {
+      font-size: 0.88rem;
+      color: var(--text-dim);
+      margin-top: 6px;
+      line-height: 1.5;
+    }
+
+    /* ── Checklist ─────────────────────────────────────────────────────── */
+    .checklist {
+      list-style: none;
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(260px, 1fr));
+      gap: 8px 16px;
+    }
+    .checklist li {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      font-size: 0.9rem;
+    }
+    .checklist li::before {
+      content: "✓";
+      color: var(--green);
+      font-weight: 700;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    /* ── Platform table ────────────────────────────────────────────────── */
+    .platform-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+    .platform-table th {
+      text-align: left;
+      padding: 10px 14px;
+      background: var(--bg3);
+      color: var(--accent);
+      font-weight: 600;
+    }
+    .platform-table td {
+      padding: 10px 14px;
+      border-top: 1px solid var(--border);
+      color: var(--text-dim);
+    }
+    .platform-table td:first-child { color: var(--text); font-weight: 500; }
+    .yes  { color: var(--green)  !important; }
+    .part { color: var(--amber)  !important; }
+    .no   { color: var(--red)    !important; }
+
+    /* ── Code block ────────────────────────────────────────────────────── */
+    pre {
+      background: var(--bg3);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 20px;
+      overflow-x: auto;
+      font-size: 0.83rem;
+      line-height: 1.5;
+      color: #c9d1d9;
+    }
+    code { font-family: "SF Mono", "Fira Code", Consolas, monospace; }
+
+    /* ── Two-column workflow ───────────────────────────────────────────── */
+    .workflow {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: 20px;
+    }
+    @media (max-width: 640px) { .workflow { grid-template-columns: 1fr; } }
+    .workflow-step {
+      background: var(--bg2);
+      border: 1px solid var(--border);
+      border-radius: var(--radius);
+      padding: 18px 20px;
+    }
+    .step-num {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 28px; height: 28px;
+      border-radius: 50%;
+      background: var(--accent);
+      color: var(--bg);
+      font-weight: 700;
+      font-size: 0.85rem;
+      margin-bottom: 10px;
+    }
+    .workflow-step h3 { font-size: 0.95rem; margin-bottom: 6px; }
+    .workflow-step p { font-size: 0.85rem; color: var(--text-dim); }
+
+    /* ── Footer ────────────────────────────────────────────────────────── */
+    footer {
+      text-align: center;
+      padding-top: 48px;
+      color: var(--text-dim);
+      font-size: 0.82rem;
+      border-top: 1px solid var(--border);
+    }
+    footer a { color: var(--text-dim); }
+    footer a:hover { color: var(--accent); }
+  </style>
+</head>
+<body>
+<div class="page">
+
+  <!-- ── Hero ─────────────────────────────────────────────────────────── -->
+  <div class="hero">
+    <img src="../resources/icons/mcaster1.svg" alt="Mcaster1 Install Studio" onerror="this.style.display='none'"/>
+    <h1>Mcaster1 Install Studio</h1>
+    <p class="tagline">
+      Cross-platform installer authoring suite — create professional macOS DMG,
+      Windows NSIS, and Linux .deb installers from one YAML project file.
+    </p>
+    <div class="badges">
+      <span class="badge badge-blue">Version 1.0.0</span>
+      <span class="badge badge-green">Qt 6 · C++17</span>
+      <span class="badge badge-grey">macOS · Windows · Linux</span>
+      <span class="badge badge-green">Open Source · MIT</span>
+      <span class="badge badge-orange">Build: Passing</span>
+    </div>
+  </div>
+
+  <!-- ── Core Features ────────────────────────────────────────────────── -->
+  <div class="section">
+    <h2>Core Features</h2>
+    <div class="feature-grid">
+
+      <div class="feature-card">
+        <span class="feature-icon">📋</span>
+        <h3>YAML Project Files (.mis)</h3>
+        <p>Define your entire installer in one human-readable YAML file.
+           App info, components, file lists, shortcuts, registry entries, prerequisites,
+           custom actions — all in one place.</p>
+      </div>
+
+      <div class="feature-card">
+        <span class="feature-icon">🎨</span>
+        <h3>Studio IDE</h3>
+        <p>8-tab graphical editor: App Info, Files, Components, Shortcuts, Registry,
+           Security, Prerequisites, Custom Actions. Dark-mode Qt6 UI with 32 SVG icons.</p>
+      </div>
+
+      <div class="feature-card">
+        <span class="feature-icon">🚀</span>
+        <h3>Multi-Platform Build Queue</h3>
+        <p>Build macOS DMG + Windows NSIS + Linux .deb in sequence from a single
+           Build button click. Each backend runs on a dedicated QThread.</p>
+      </div>
+
+      <div class="feature-card">
+        <span class="feature-icon">🍺</span>
+        <h3>Homebrew Artifact Baking</h3>
+        <p>macOS backend automatically detects Homebrew dylib dependencies via
+           <code>otool -L</code>, copies them into <code>Contents/Frameworks/</code>,
+           and rewrites load commands to portable <code>@executable_path</code> refs.</p>
+      </div>
+
+      <div class="feature-card">
+        <span class="feature-icon">🔐</span>
+        <h3>Code Signing Manager</h3>
+        <p>macOS ad-hoc or Developer ID signing, optional Apple notarization via
+           <code>xcrun notarytool</code>. Windows Authenticode PFX signing.
+           Linux GPG package signing.</p>
+      </div>
+
+      <div class="feature-card">
+        <span class="feature-icon">📜</span>
+        <h3>Certificate Generator</h3>
+        <p>Create self-signed certificates and certificate signing requests (CSR)
+           for all three platforms via the built-in OpenSSL wrapper — no terminal needed.</p>
+      </div>
+
+      <div class="feature-card">
+        <span class="feature-icon">👤</span>
+        <h3>Builder Profiles</h3>
+        <p>Save company name, email, website, signing identities, and custom tokens
+           as reusable profiles. Apply any profile to auto-populate publisher and signing
+           fields across projects.</p>
+      </div>
+
+      <div class="feature-card">
+        <span class="feature-icon">🧾</span>
+        <h3>NSIS + Inno Setup Importer</h3>
+        <p>Import existing <code>.nsi</code> or <code>.iss</code> Windows installer
+           scripts as starting points, then export to the universal <code>.mis</code>
+           format or extend for other platforms.</p>
+      </div>
+
+      <div class="feature-card">
+        <span class="feature-icon">🧪</span>
+        <h3>Test Installer Button</h3>
+        <p>Launch the runtime installer wizard against your current project directly
+           from Studio — macOS, Windows, and Linux all supported. Rapid iteration
+           without a full build.</p>
+      </div>
+
+      <div class="feature-card">
+        <span class="feature-icon">📊</span>
+        <h3>EventLog + Build History</h3>
+        <p>Color-coded, timestamped event log dock (Info / Warn / Error / Success).
+           Persistent JSON build history records every build with output path and
+           code-sign status.</p>
+      </div>
+
+      <div class="feature-card">
+        <span class="feature-icon">✅</span>
+        <h3>Prerequisites Checker</h3>
+        <p>Define system requirements (OS version, frameworks, runtimes) that are
+           verified before install begins. Advisory or blocking — your choice.</p>
+      </div>
+
+      <div class="feature-card">
+        <span class="feature-icon">⚡</span>
+        <h3>Custom Actions</h3>
+        <p>Run shell scripts, PowerShell commands, or Python/Ruby scripts at any
+           install lifecycle event: before-install, after-install, before-uninstall,
+           after-uninstall.</p>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ── Platform Support ──────────────────────────────────────────────── -->
+  <div class="section">
+    <h2>Platform Support</h2>
+    <table class="platform-table">
+      <thead>
+        <tr>
+          <th>Feature</th>
+          <th>macOS</th>
+          <th>Windows</th>
+          <th>Linux</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr><td>DMG installer</td>         <td class="yes">✓ create-dmg / hdiutil</td><td class="no">—</td><td class="no">—</td></tr>
+        <tr><td>NSIS installer (.exe)</td>  <td class="no">—</td><td class="yes">✓ makensis</td><td class="no">—</td></tr>
+        <tr><td>.deb package</td>           <td class="no">—</td><td class="no">—</td><td class="yes">✓ dpkg-deb</td></tr>
+        <tr><td>AppImage</td>               <td class="no">—</td><td class="no">—</td><td class="yes">✓ AppDir skeleton</td></tr>
+        <tr><td>Code signing</td>           <td class="yes">✓ codesign / notarize</td><td class="yes">✓ signtool PFX</td><td class="yes">✓ GPG</td></tr>
+        <tr><td>Homebrew baking</td>        <td class="yes">✓ otool + install_name_tool</td><td class="no">—</td><td class="no">—</td></tr>
+        <tr><td>Registry entries</td>       <td class="no">—</td><td class="yes">✓ reg.exe</td><td class="no">—</td></tr>
+        <tr><td>Desktop shortcuts</td>      <td class="yes">✓ webloc / alias</td><td class="yes">✓ .lnk / Start Menu</td><td class="yes">✓ .desktop</td></tr>
+        <tr><td>Prerequisites check</td>    <td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+        <tr><td>Custom actions</td>         <td class="yes">✓ sh</td><td class="yes">✓ cmd / PowerShell</td><td class="yes">✓ sh / py</td></tr>
+        <tr><td>Uninstaller manifest</td>   <td class="yes">✓</td><td class="yes">✓</td><td class="yes">✓</td></tr>
+        <tr><td>Studio IDE</td>             <td class="yes">✓ Qt6 native</td><td class="yes">✓ Qt6 native</td><td class="yes">✓ Qt6 native</td></tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ── .mis Project File ─────────────────────────────────────────────── -->
+  <div class="section">
+    <h2>Project File Format (.mis)</h2>
+    <p style="color:var(--text-dim); margin-bottom:16px;">
+      A single YAML file describes your entire installer. Load it into Studio, adjust
+      in the GUI, then click Build. The format is version-stable and human-editable.
+    </p>
+    <pre><code>format: mis/1
+
+app:
+  name:        "My Application"
+  version:     "2.1.0"
+  publisher:   "ACME Corp"
+  identifier:  "com.acme.myapp"
+  url:         "https://acme.example.com"
+
+defaults:
+  install-dir:
+    macos:   "/Applications/MyApp"
+    windows: "C:\\Program Files\\ACME\\MyApp"
+    linux:   "/opt/acme/myapp"
+  require-admin:    true
+  allow-custom-dir: true
+  launch-after:     true
+
+targets: [macos, windows, linux]
+
+theme:
+  accent-color:     "#00c9ff"
+  background-color: "#1a1a2e"
+  dark-mode:        true
+
+components:
+  - id:       core
+    name:     "Core Application"
+    required: true
+    files:
+      - src: "MyApp.app"
+        dst: "{install-dir}/MyApp.app"
+        isDir: true
+
+prerequisites:
+  - id:       os-check
+    name:     "macOS 12 Monterey or later"
+    checkCmd: "[ $(sw_vers -productVersion | cut -d. -f1) -ge 12 ] && echo ok"
+    platforms: [macos]
+
+custom-actions:
+  - id:      quarantine-remove
+    trigger: after-install
+    type:    shell
+    command: "xattr -dr com.apple.quarantine \"{install-dir}/MyApp.app\" 2>/dev/null || true"
+    platforms: [macos]
+
+signing:
+  macos-signer:   ""          # Leave blank for ad-hoc, or set Developer ID
+  macos-notarize: false
+</code></pre>
+  </div>
+
+  <!-- ── Workflow ──────────────────────────────────────────────────────── -->
+  <div class="section">
+    <h2>Workflow</h2>
+    <div class="workflow">
+      <div class="workflow-step">
+        <div class="step-num">1</div>
+        <h3>Assemble Payload</h3>
+        <p>Place your built app, config files, and resources into a <code>payload/</code>
+           staging directory. Use the included <code>assemble-payload.sh</code> helper
+           or script your own.</p>
+      </div>
+      <div class="workflow-step">
+        <div class="step-num">2</div>
+        <h3>Open or Create Project</h3>
+        <p>Open Studio and load an existing <code>.mis</code> file, create a new
+           project, or import an existing NSIS / Inno Setup script.</p>
+      </div>
+      <div class="workflow-step">
+        <div class="step-num">3</div>
+        <h3>Edit in Studio</h3>
+        <p>Fill in App Info, define components and file lists, set shortcuts, configure
+           signing. Apply a Builder Profile to auto-fill your company details.</p>
+      </div>
+      <div class="workflow-step">
+        <div class="step-num">4</div>
+        <h3>Test &amp; Build</h3>
+        <p>Click <em>Test Installer</em> to preview the wizard, then click <em>Build</em>
+           to produce the final <code>.dmg</code>, <code>.exe</code>, or <code>.deb</code>.</p>
+      </div>
+    </div>
+  </div>
+
+  <!-- ── Full Feature Checklist ────────────────────────────────────────── -->
+  <div class="section">
+    <h2>Complete Feature Checklist</h2>
+    <ul class="checklist">
+      <li>Single YAML project file (.mis format)</li>
+      <li>8-tab Studio IDE (Qt6 dark theme)</li>
+      <li>Multi-platform build queue (macOS + Win + Linux)</li>
+      <li>macOS DMG with Homebrew artifact baking</li>
+      <li>Windows NSIS script generator</li>
+      <li>Linux .deb control file + dpkg</li>
+      <li>Linux AppImage skeleton (AppDir)</li>
+      <li>macOS codesign (ad-hoc + Developer ID)</li>
+      <li>Apple notarization via xcrun notarytool</li>
+      <li>Windows Authenticode (PFX + signtool)</li>
+      <li>Linux GPG package signing</li>
+      <li>Self-signed cert + CSR generator</li>
+      <li>PFX import / Keychain integration</li>
+      <li>Builder Profiles (identity + signing)</li>
+      <li>32 SVG icons (action + HUD + status)</li>
+      <li>EventLog dock (Info / Warn / Error / Success)</li>
+      <li>Build History (persistent JSON, 500 records)</li>
+      <li>HUD status icon (building / ok / fail)</li>
+      <li>Status bar clock + project info</li>
+      <li>NSIS importer (.nsi → .mis)</li>
+      <li>Inno Setup importer (.iss → .mis)</li>
+      <li>Prerequisites checker (advisory / blocking)</li>
+      <li>Custom Actions (shell / script / PS / Python)</li>
+      <li>Runtime installer wizard (7-page QWizard)</li>
+      <li>Test Installer button (cross-platform)</li>
+      <li>Uninstaller manifest writer</li>
+      <li>Token resolution ({install-dir}, {name}, etc.)</li>
+      <li>Desktop shortcuts (webloc / .lnk / .desktop)</li>
+      <li>Windows Registry entries editor</li>
+      <li>Component dependency flags</li>
+      <li>License page (txt / rtf)</li>
+      <li>VS2022 solution + vcxproj files</li>
+      <li>Qt Creator .pro files (all platforms)</li>
+    </ul>
+  </div>
+
+  <!-- ── Footer ────────────────────────────────────────────────────────── -->
+  <footer>
+    <p>
+      Mcaster1 Install Studio &nbsp;·&nbsp; Version 1.0.0 &nbsp;·&nbsp;
+      <a href="https://mcaster1.com">mcaster1.com</a> &nbsp;·&nbsp;
+      <a href="https://github.com/davestj/mcaster1-install-system">GitHub</a>
+    </p>
+    <p style="margin-top:8px; color:#555566;">
+      Built with <a href="https://www.qt.io">Qt 6</a> &nbsp;·&nbsp; MIT License
+    </p>
+  </footer>
+
+</div>
+</body>
+</html>

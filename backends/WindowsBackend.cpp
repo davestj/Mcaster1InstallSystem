@@ -5,20 +5,40 @@
 #include <QTextStream>
 #include <QProcess>
 
+// Returns true if makensis is available on PATH (or common install locations)
+static bool makensisAvailable()
+{
+    QProcess p;
+    // Try PATH first
+    p.start("makensis", {"/VERSION"});
+    if (p.waitForFinished(5000) && p.exitCode() == 0) return true;
+
+    // Windows common locations (when cross-compiling from macOS/Linux via PATH is unlikely)
+    // On macOS: brew install makensis
+    p.start("which", {"makensis"});
+    p.waitForFinished(3000);
+    return p.exitCode() == 0;
+}
+
 QStringList WindowsBackend::validate(const Manifest &m, const QString &projectDir) const
 {
     Q_UNUSED(projectDir)
-    return m.validate();
-    // TODO Phase 2: check for makensis in PATH if auto-compile desired
+    QStringList issues = m.validate();
+
+    if (!makensisAvailable())
+        issues << "INFO: makensis not found — a .nsi script will be generated but not compiled. "
+                  "Install: brew install makensis  (macOS/Linux)  or  https://nsis.sourceforge.io  (Windows)";
+
+    return issues;
 }
 
 QString WindowsBackend::outputFilename(const Manifest &m) const
 {
-    return QString("%1-%2-%3-win64-setup.nsi")
-        .arg(m.app.publisher)
-        .arg(m.app.name)
-        .arg(m.app.version)
+    // Return .exe if makensis can compile, otherwise .nsi script
+    const QString base = QString("%1-%2-%3-win64-setup")
+        .arg(m.app.publisher, m.app.name, m.app.version)
         .replace(' ', '_');
+    return base + (makensisAvailable() ? ".exe" : ".nsi");
 }
 
 bool WindowsBackend::build(const Manifest   &m,

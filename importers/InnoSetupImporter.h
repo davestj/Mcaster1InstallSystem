@@ -1,20 +1,19 @@
 #pragma once
 /*
- * InnoSetupImporter — Phase 2
- * Parses Inno Setup scripts (.iss) and converts them to .mis Manifests.
+ * InnoSetupImporter — Inno Setup script (.iss) → .mis Manifest converter
  *
  * ISS sections handled:
- *   [Setup]      → AppInfo (AppName, AppVersion, AppPublisher, DefaultDirName)
- *   [Files]      → Component files (Source, DestDir, Flags)
- *   [Icons]      → Shortcuts (Name, Filename)
- *   [Components] → Components (Name, Description, Flags)
- *   [Tasks]      → Optional install tasks (future)
- *   [Registry]   → Registry entries (future)
- *   [Run]        → Post-install actions (future)
+ *   [Setup]      → AppInfo (AppName, AppVersion, AppPublisher, DefaultDirName, etc.)
+ *   [Components] → Component objects (Name, Description, Flags: fixed → required)
+ *   [Files]      → FileEntry per component (Source, DestDir, Components, Flags)
+ *   [Icons]      → Shortcut objects (Name, Filename)
+ *   [Registry]   → RegistryEntry objects (Root, Subkey, ValueType, ValueName, ValueData)
+ *   [Run]        → CustomAction with trigger=after-install (Filename, Flags)
  */
 
 #include "../manifest/Manifest.h"
 #include <QStringList>
+#include <QMap>
 
 class InnoSetupImporter
 {
@@ -27,8 +26,15 @@ public:
 
 private:
     void parseSetupSection(const QStringList &lines);
-    void parseFilesSection(const QStringList &lines, Component &defaultComp);
+    void parseComponentsSection(const QStringList &lines,
+                                QMap<QString, int> &compIndex); // id → index in m_manifest.components
+    void parseFilesSection(const QStringList &lines,
+                           Component &defaultComp,
+                           const QMap<QString, int> &compIndex);
     void parseIconsSection(const QStringList &lines);
+    void parseRegistrySection(const QStringList &lines);
+    void parseRunSection(const QStringList &lines);
+
     QString issValue(const QString &line, const QString &key) const;
 
     Manifest    m_manifest;

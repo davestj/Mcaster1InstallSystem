@@ -98,10 +98,46 @@ runtime-clean:
 	@rm -rf runtime/build
 	@echo "    Done."
 
+# ── miscc — CLI batch compiler (cmake-delegated) ─────────────────────────────
+.PHONY: cli cli-release cli-clean cli-install
+
+cli:
+	@if [ ! -f "config.h" ]; then \
+	    echo "ERROR: config.h not found. Run ./configure first."; exit 1; \
+	fi
+	@echo "==> Building miscc CLI compiler (Debug)..."
+	@QT_PREFIX="$$(brew --prefix qt 2>/dev/null || echo /usr)" && \
+	 cmake -B cli/build -S cli \
+	    -DCMAKE_PREFIX_PATH="$$QT_PREFIX" \
+	    -DCMAKE_BUILD_TYPE=Debug \
+	    -DCMAKE_EXPORT_COMPILE_COMMANDS=ON && \
+	 cmake --build cli/build -j$(NCPU)
+	@echo "==> miscc build complete: cli/build/miscc"
+	@echo "    Usage: cli/build/miscc --help"
+
+cli-release:
+	@QT_PREFIX="$$(brew --prefix qt 2>/dev/null || echo /usr)" && \
+	 cmake -B cli/build -S cli \
+	    -DCMAKE_PREFIX_PATH="$$QT_PREFIX" \
+	    -DCMAKE_BUILD_TYPE=Release && \
+	 cmake --build cli/build -j$(NCPU)
+	@echo "==> miscc release build complete: cli/build/miscc"
+
+cli-clean:
+	@echo "==> Cleaning miscc CLI build..."
+	@rm -rf cli/build
+	@echo "    Done."
+
+cli-install: cli-release
+	@echo "==> Installing miscc to /usr/local/bin/miscc..."
+	@install -m 755 cli/build/miscc /usr/local/bin/miscc && \
+	 echo "    Installed: /usr/local/bin/miscc" || \
+	 echo "    FAILED — try: sudo make cli-install"
+
 # ── Convenience: build both ───────────────────────────────────────────────────
 .PHONY: all-apps
-all-apps: studio runtime
-	@echo "==> All apps built."
+all-apps: studio runtime cli
+	@echo "==> All apps built (Studio + Runtime + miscc)."
 
 # ── Version info ──────────────────────────────────────────────────────────────
 .PHONY: version
@@ -110,6 +146,6 @@ version:
 
 # ── Clean everything ──────────────────────────────────────────────────────────
 .PHONY: deep-clean
-deep-clean: studio-clean runtime-clean
+deep-clean: studio-clean runtime-clean cli-clean
 	@find . -name "*.o" -delete
 	@echo "Deep clean complete."

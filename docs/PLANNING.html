@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mcaster1 Install System — Planning &amp; Phase Tracker</title>
+<style>
+  :root {
+    --bg:       #1a1a2e;
+    --bg2:      #16213e;
+    --bg3:      #0f3460;
+    --accent:   #00c9ff;
+    --accent2:  #0096c7;
+    --fg:       #e0e0e8;
+    --fg2:      #a0a0b8;
+    --success:  #4caf50;
+    --warn:     #ff9800;
+    --error:    #f44336;
+    --inprogress: #2196f3;
+    --planned:  #9c27b0;
+    --radius:   8px;
+    --font:     system-ui, -apple-system, sans-serif;
+    --mono:     "Menlo", "Consolas", monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 14px; line-height: 1.6; }
+  a { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+
+  /* ── Header ── */
+  header {
+    background: linear-gradient(135deg, var(--bg3), var(--bg2));
+    border-bottom: 2px solid var(--accent);
+    padding: 32px 48px 24px;
+  }
+  header h1 { font-size: 28px; color: var(--accent); font-weight: 700; letter-spacing: -0.5px; }
+  header p  { color: var(--fg2); margin-top: 6px; font-size: 14px; }
+  .meta { display: flex; gap: 24px; margin-top: 16px; flex-wrap: wrap; }
+  .badge {
+    display: inline-flex; align-items: center; gap: 6px;
+    background: var(--bg); border: 1px solid var(--bg3);
+    border-radius: 20px; padding: 4px 12px; font-size: 12px; color: var(--fg2);
+  }
+  .badge b { color: var(--accent); }
+
+  /* ── Layout ── */
+  .container { max-width: 1200px; margin: 0 auto; padding: 32px 48px; }
+  section { margin-bottom: 48px; }
+  h2 { font-size: 20px; color: var(--accent); margin-bottom: 16px; padding-bottom: 8px;
+       border-bottom: 1px solid var(--bg3); }
+  h3 { font-size: 15px; color: var(--fg); margin: 20px 0 10px; }
+
+  /* ── Phase cards ── */
+  .phases { display: grid; grid-template-columns: repeat(auto-fill, minmax(340px, 1fr)); gap: 16px; }
+  .phase-card {
+    background: var(--bg2); border: 1px solid var(--bg3);
+    border-radius: var(--radius); padding: 20px;
+    border-left: 4px solid var(--bg3);
+    transition: border-color 0.2s;
+  }
+  .phase-card.complete  { border-left-color: var(--success); }
+  .phase-card.partial   { border-left-color: var(--warn); }
+  .phase-card.inprogress{ border-left-color: var(--inprogress); }
+  .phase-card.planned   { border-left-color: var(--planned); }
+
+  .phase-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: 12px; }
+  .phase-num  { font-size: 11px; color: var(--fg2); font-weight: 600; letter-spacing: 0.05em; text-transform: uppercase; }
+  .phase-title { font-size: 15px; font-weight: 600; color: var(--fg); margin-top: 2px; }
+  .status-pill {
+    font-size: 11px; font-weight: 600; border-radius: 12px; padding: 3px 10px;
+    white-space: nowrap; text-transform: uppercase; letter-spacing: 0.05em;
+  }
+  .pill-complete   { background: rgba(76,175,80,0.15); color: var(--success); border: 1px solid var(--success); }
+  .pill-partial    { background: rgba(255,152,0,0.15);  color: var(--warn);    border: 1px solid var(--warn);    }
+  .pill-inprogress { background: rgba(33,150,243,0.15); color: var(--inprogress); border: 1px solid var(--inprogress); }
+  .pill-planned    { background: rgba(156,39,176,0.15); color: var(--planned); border: 1px solid var(--planned); }
+
+  .phase-items { list-style: none; }
+  .phase-items li { padding: 4px 0; padding-left: 20px; position: relative; color: var(--fg2); font-size: 13px; }
+  .phase-items li::before { content: ""; position: absolute; left: 0; top: 10px;
+    width: 8px; height: 8px; border-radius: 50%; background: var(--bg3); }
+  .phase-items li.done::before { background: var(--success); }
+  .phase-items li.doing::before { background: var(--inprogress); }
+  .phase-items li.todo::before  { background: var(--bg3); }
+  .phase-items li strong { color: var(--fg); }
+
+  /* ── File table ── */
+  .file-table { width: 100%; border-collapse: collapse; font-size: 13px; }
+  .file-table th { background: var(--bg3); color: var(--accent); padding: 10px 14px;
+                   text-align: left; font-weight: 600; }
+  .file-table td { padding: 8px 14px; border-bottom: 1px solid var(--bg3); vertical-align: top; }
+  .file-table tr:nth-child(even) td { background: rgba(255,255,255,0.02); }
+  .file-table code { font-family: var(--mono); font-size: 12px; background: var(--bg3);
+                     padding: 2px 6px; border-radius: 4px; color: var(--accent); }
+  .file-table .tag { font-size: 11px; font-weight: 600; border-radius: 4px; padding: 2px 7px;
+                     text-transform: uppercase; letter-spacing: 0.04em; }
+  .tag-complete   { background: rgba(76,175,80,0.15); color: var(--success); }
+  .tag-partial    { background: rgba(255,152,0,0.15); color: var(--warn); }
+  .tag-planned    { background: rgba(156,39,176,0.15); color: var(--planned); }
+
+  /* ── Arch diagram ── */
+  .arch { display: grid; grid-template-columns: 1fr 1fr; gap: 24px; }
+  .arch-box {
+    background: var(--bg2); border: 1px solid var(--bg3); border-radius: var(--radius);
+    padding: 20px;
+  }
+  .arch-box h3 { color: var(--accent); font-size: 14px; margin-bottom: 12px; }
+  .arch-box pre { font-family: var(--mono); font-size: 11px; color: var(--fg2); white-space: pre-wrap; }
+
+  /* ── Timeline ── */
+  .timeline { position: relative; padding-left: 28px; }
+  .timeline::before { content: ""; position: absolute; left: 7px; top: 0; bottom: 0;
+                       width: 2px; background: var(--bg3); }
+  .tl-item { position: relative; margin-bottom: 20px; }
+  .tl-dot { position: absolute; left: -24px; top: 4px; width: 14px; height: 14px;
+             border-radius: 50%; background: var(--bg3); border: 2px solid var(--bg2); }
+  .tl-dot.done     { background: var(--success); }
+  .tl-dot.doing    { background: var(--inprogress); }
+  .tl-dot.upcoming { background: var(--planned); }
+  .tl-date { font-size: 11px; color: var(--fg2); margin-bottom: 2px; }
+  .tl-title { font-weight: 600; color: var(--fg); font-size: 14px; }
+  .tl-desc  { font-size: 12px; color: var(--fg2); margin-top: 4px; }
+
+  /* ── Phase 8 detail ── */
+  .feature-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(260px, 1fr)); gap: 14px; }
+  .feature-box {
+    background: var(--bg2); border: 1px solid var(--bg3);
+    border-radius: var(--radius); padding: 16px;
+  }
+  .feature-box h4 { color: var(--accent); font-size: 13px; margin-bottom: 8px; }
+  .feature-box ul { list-style: disc; padding-left: 18px; color: var(--fg2); font-size: 12px; }
+  .feature-box li { margin-bottom: 3px; }
+
+  footer { text-align: center; padding: 32px; color: var(--fg2); font-size: 12px;
+           border-top: 1px solid var(--bg3); }
+</style>
+</head>
+<body>
+
+<header>
+  <h1>Mcaster1 Install System — Planning &amp; Phase Tracker</h1>
+  <p>Cross-platform installer authoring suite (Qt6 macOS/Windows/Linux)</p>
+  <div class="meta">
+    <span class="badge">Version <b>1.0.0</b></span>
+    <span class="badge">Updated <b>2026-03-03</b></span>
+    <span class="badge" style="background:#1c3468;color:#7dd3fc;">Next: <b>Phase 10 — Windows &amp; Linux Ports</b></span>
+    <span class="badge">Phases Complete <b>9 / 10</b></span>
+    <span class="badge">Platform <b>macOS Apple Silicon</b></span>
+  </div>
+</header>
+
+<div class="container">
+
+<!-- ── Phase Progress ───────────────────────────────────────────────────── -->
+<section>
+  <h2>Phase Progress</h2>
+  <div class="phases">
+
+    <div class="phase-card complete">
+      <div class="phase-header">
+        <div><div class="phase-num">Phase 1</div>
+          <div class="phase-title">Build System &amp; Studio Core</div></div>
+        <span class="status-pill pill-complete">Complete</span>
+      </div>
+      <ul class="phase-items">
+        <li class="done">Autotools + cmake delegation (Makefile.am)</li>
+        <li class="done">Qt6 dark theme + stylesheet (StudioStyle.h)</li>
+        <li class="done">StudioMainWindow skeleton + ProjectSidebar</li>
+        <li class="done">Manifest.h/cpp YAML data model</li>
+        <li class="done">Runtime QWizard base (InstallerWizard)</li>
+        <li class="done">App builds and launches on macOS arm64</li>
+      </ul>
+    </div>
+
+    <div class="phase-card partial">
+      <div class="phase-header">
+        <div><div class="phase-num">Phase 2</div>
+          <div class="phase-title">NSIS &amp; Inno Setup Importers</div></div>
+        <span class="status-pill pill-partial">Partial</span>
+      </div>
+      <ul class="phase-items">
+        <li class="done">NsisImporter.h/cpp — regex-based .nsi parser</li>
+        <li class="done">InnoSetupImporter.h/cpp — regex-based .iss parser</li>
+        <li class="done">File menu: Import NSIS / Import Inno Setup</li>
+        <li class="todo">Full field coverage + edge case testing</li>
+        <li class="todo">Import preview dialog</li>
+      </ul>
+    </div>
+
+    <div class="phase-card complete">
+      <div class="phase-header">
+        <div><div class="phase-num">Phase 3</div>
+          <div class="phase-title">Runtime Installer Wizard</div></div>
+        <span class="status-pill pill-complete">Complete</span>
+      </div>
+      <ul class="phase-items">
+        <li class="done">WelcomePage — banner + app info display</li>
+        <li class="done">LicensePage — license text + accept/decline</li>
+        <li class="done">ComponentsPage — checkboxes, required/optional</li>
+        <li class="done">DirectoryPage — install dir picker + platform defaults</li>
+        <li class="done">ReadyPage — summary before install</li>
+        <li class="done">InstallPage — QProgressBar + InstallEngine QThread</li>
+        <li class="done">FinishPage — launch-app checkbox, uninstaller manifest</li>
+        <li class="done">InstallerStyle — dynamic theme from WizardTheme</li>
+      </ul>
+    </div>
+
+    <div class="phase-card complete">
+      <div class="phase-header">
+        <div><div class="phase-num">Phase 4</div>
+          <div class="phase-title">Code Signing Dialog</div></div>
+        <span class="status-pill pill-complete">Complete</span>
+      </div>
+      <ul class="phase-items">
+        <li class="done">CodeSignDialog — macOS Developer ID + Notarize</li>
+        <li class="done">Windows Authenticode (.pfx sign)</li>
+        <li class="done">Linux GPG key signing</li>
+        <li class="done">Certificate generation: self-signed + CSR</li>
+        <li class="done">PEM → PFX converter</li>
+        <li class="done">macOS Keychain import</li>
+        <li class="done">CodeSigner.h/cpp + CertGenerator.h/cpp backends</li>
+      </ul>
+    </div>
+
+    <div class="phase-card complete">
+      <div class="phase-header">
+        <div><div class="phase-num">Phase 5</div>
+          <div class="phase-title">Build Backends &amp; BuildPanel</div></div>
+        <span class="status-pill pill-complete">Complete</span>
+      </div>
+      <ul class="phase-items">
+        <li class="done">MacOsBackend — DMG packaging (hdiutil)</li>
+        <li class="done">WindowsBackend — NSIS script generator</li>
+        <li class="done">LinuxBackend — .deb + AppImage</li>
+        <li class="done">BuildPanel — platform checkboxes + build queue</li>
+        <li class="done">BuildWorker QThread per platform</li>
+        <li class="done">Sequential multi-platform queue</li>
+        <li class="done">Manifest validation before build</li>
+      </ul>
+    </div>
+
+    <div class="phase-card complete">
+      <div class="phase-header">
+        <div><div class="phase-num">Phase 6</div>
+          <div class="phase-title">SVG Icons &amp; Test Installer</div></div>
+        <span class="status-pill pill-complete">Complete</span>
+      </div>
+      <ul class="phase-items">
+        <li class="done">resources/icons/mcaster1.svg — canonical app icon</li>
+        <li class="done">SVG→icns cmake pipeline (rsvg-convert + iconutil)</li>
+        <li class="done">Dock/Finder icon via QSvgRenderer multi-resolution</li>
+        <li class="done">25 action icons in SvgIcons.h (all 24×24 dark theme)</li>
+        <li class="done">Icons applied to all buttons, actions, tabs</li>
+        <li class="done">Test Installer button (BuildPanel) — writes temp manifest + launches runtime</li>
+      </ul>
+    </div>
+
+    <div class="phase-card complete">
+      <div class="phase-header">
+        <div><div class="phase-num">Phase 7</div>
+          <div class="phase-title">Prerequisites &amp; Custom Actions</div></div>
+        <span class="status-pill pill-complete">Complete</span>
+      </div>
+      <ul class="phase-items">
+        <li class="done">PrerequisitesEditor.h/cpp — Studio tab (split-panel list+form)</li>
+        <li class="done">CustomActionsEditor.h/cpp — Studio tab (table + combo Trigger/Type)</li>
+        <li class="done">StudioMainWindow wired: load(), save(), tab icons</li>
+        <li class="done">PrerequisitesPage.h/cpp — Runtime wizard page</li>
+        <li class="done">Platform-filtered check commands (sh/cmd.exe)</li>
+        <li class="done">Advisory mode: isComplete() always true</li>
+        <li class="done">InstallerWizard: Prerequisites=2 in PageId; conditional register</li>
+      </ul>
+    </div>
+
+    <div class="phase-card done">
+      <div class="phase-header">
+        <div><div class="phase-num">Phase 8</div>
+          <div class="phase-title">Log Window, History, Tooltips, Clock</div></div>
+        <span class="status-pill pill-done">Complete</span>
+      </div>
+      <ul class="phase-items">
+        <li class="done"><strong>EventLog dock</strong> — timestamped, color-coded, export; Dark + Enterprise themes</li>
+        <li class="done"><strong>Build History</strong> — persistent JSON, Reveal in Finder, right-click context menu; Dark + Enterprise themes</li>
+        <li class="done"><strong>Tooltips</strong> — setToolTip() on all widgets + tab bar</li>
+        <li class="done"><strong>Status bar clock</strong> — date/time + Studio version</li>
+        <li class="done"><strong>App version display</strong> — live from AppInfoEditor modified() + projectInfoChanged() signals</li>
+      </ul>
+    </div>
+
+    <div class="phase-card done">
+      <div class="phase-header">
+        <div><div class="phase-num">Pre-9</div>
+          <div class="phase-title">Multi-Project Sidebar, Inline Rename, Dev Signing</div></div>
+        <span class="status-pill pill-done">Complete</span>
+      </div>
+      <ul class="phase-items">
+        <li class="done"><strong>Inline project/app name edit</strong> — editable QLineEdit at top of sidebar; 1200 ms debounce → auto-saves + renames .mis file on disk</li>
+        <li class="done"><strong>Multi-project list</strong> — BuilderProfile tracks QStringList projectPaths; sidebar shows all projects with active indicator (●) and per-row ✕ remove button</li>
+        <li class="done"><strong>Project switching</strong> — click any project in list → loads it; active profile association auto-updates on save/open</li>
+        <li class="done"><strong>Add Application button</strong> — "+" in APPLICATIONS header → QInputDialog → new AppGroup appended to manifest + loadEditors() refresh</li>
+        <li class="done"><strong>Skip signing mode</strong> — BuilderProfile.skipSigning: disables all signing on every platform (testing only)</li>
+        <li class="done"><strong>Dev (ad-hoc) signing mode</strong> — BuilderProfile.devSignMode: macOS codesign --sign -, Windows/Linux skip signtool/gpg; identity fields disabled</li>
+        <li class="done"><strong>Signing mode UI</strong> — "Signing Mode" QGroupBox at top of Code Signing tab; interlock logic: skipSigning disables devSign + all identity fields</li>
+      </ul>
+    </div>
+
+    <div class="phase-card done">
+      <div class="phase-header">
+        <div><div class="phase-num">Phase 9</div>
+          <div class="phase-title">Install Dir Hints, Help &amp; Docs</div></div>
+        <span class="status-pill pill-done">Complete</span>
+      </div>
+      <ul class="phase-items">
+        <li class="done"><strong>DirectoryPage hints</strong> — per-platform guide blocks (#if Q_OS_MACOS / WIN / Linux) inline in runtime wizard; storage space label</li>
+        <li class="done"><strong>AppInfoEditor hints</strong> — detailed tooltips on m_dirMacos/Windows/Linux with token and path-convention examples</li>
+        <li class="done"><strong>docs/index.html</strong> — comprehensive 670-line styled help page; auto-copied into app bundle Resources/docs/ by cmake</li>
+        <li class="done"><strong>Help menu → Documentation (F1)</strong> — QDesktopServices::openUrl launches docs/index.html in system browser; 3-path fallback</li>
+        <li class="done"><strong>HelpPanel dock</strong> — QTextBrowser-based dockable panel; Back/Forward nav; "↗ Browser" button; loads docs/index.html from app bundle; toggled via Help ▶ Show Help Panel (Ctrl+Shift+H); right-side dock, closeable + floatable + movable; new files: <code>studio/HelpPanel.h/.cpp</code></li>
+      </ul>
+    </div>
+
+    <!-- Phase 10 -->
+    <div class="phase-card planned">
+      <div class="phase-header">
+        <div><div class="phase-num">Phase 10</div>
+          <div class="phase-title">Windows &amp; Linux Native Builds</div></div>
+        <span class="status-pill pill-planned">Planned</span>
+      </div>
+      <ul class="phase-items">
+        <li class="todo"><strong>Windows Qt6 build environment</strong> — Visual Studio 2022 + Qt6 MSVC; cmake Windows build; Studio.exe + miscc.exe compile and launch</li>
+        <li class="todo"><strong>Linux Qt6 build environment</strong> — Ubuntu 22.04 LTS (CI/CD target); Qt6 from apt or aqtinstall; cmake Linux build; Studio + miscc binaries</li>
+        <li class="todo"><strong>miscc CLI — Windows console build</strong> — <code>cmake -B cli/build-win -S cli</code>; <code>miscc.exe</code> cross-compiles to .nsi; run makensis on Windows</li>
+        <li class="todo"><strong>miscc CLI — Linux console build</strong> — <code>cmake -B cli/build-linux -S cli</code>; <code>miscc</code> produces .deb staging tree; run dpkg-deb</li>
+        <li class="todo"><strong>Theme — Windows native integration</strong> — QStyle::QWindowsVistaStyle fallback; tray icon support; Windows registry reads for install path defaults</li>
+        <li class="todo"><strong>Runtime wizard — Windows</strong> — UAC elevation via manifest; <code>QProcess::startDetached("cmd.exe")</code> for custom actions; HKCU/HKLM registry write</li>
+        <li class="todo"><strong>Runtime wizard — Linux</strong> — <code>pkexec</code> / <code>sudo</code> elevation detection; desktop entry (.desktop file) creation; <code>ldconfig</code> post-install action</li>
+        <li class="todo"><strong>CI/CD pipeline</strong> — GitHub Actions: macOS (arm64), Ubuntu 22.04, Windows Server 2022 matrix; artifact upload per platform</li>
+        <li class="todo"><strong>ACME Widgets example — Windows NSIS build</strong> — run makensis on Windows to produce signed .exe; verify wizard pages render</li>
+        <li class="todo"><strong>ACME Widgets example — Linux DEB build</strong> — run dpkg-deb on Ubuntu; verify <code>dpkg -i</code> installs correctly; verify symlink and ldconfig</li>
+      </ul>
+    </div>
+
+  </div>
+</section>
+
+<!-- ── Timeline ──────────────────────────────────────────────────────────── -->
+<section>
+  <h2>Development Timeline</h2>
+  <div class="timeline">
+    <div class="tl-item">
+      <div class="tl-dot done"></div>
+      <div class="tl-date">2026-03-01</div>
+      <div class="tl-title">Phase 1 — Build system, Studio core, Runtime base</div>
+      <div class="tl-desc">Both apps build and launch. Manifest model. Dark Qt6 theme.</div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-dot done"></div>
+      <div class="tl-date">2026-03-01</div>
+      <div class="tl-title">Phase 3 — Runtime wizard complete (all 8 pages)</div>
+      <div class="tl-desc">InstallEngine QThread. DirectoryPage. Uninstaller manifest.</div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-dot done"></div>
+      <div class="tl-date">2026-03-02</div>
+      <div class="tl-title">Phase 4 — CodeSignDialog; Phase 5 — Build backends</div>
+      <div class="tl-desc">Full signing UX. macOS/Windows/Linux backend queue. Manifest validation.</div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-dot done"></div>
+      <div class="tl-date">2026-03-02</div>
+      <div class="tl-title">Phase 6 — SVG icon system + Test Installer</div>
+      <div class="tl-desc">25 action icons. SVG→icns cmake pipeline. Dock/Finder icon. Test Installer button.</div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-dot done"></div>
+      <div class="tl-date">2026-03-03</div>
+      <div class="tl-title">Phase 7 — Prerequisites &amp; Custom Actions</div>
+      <div class="tl-desc">Studio editors + Runtime PrerequisitesPage. Platform filtering. Advisory mode.</div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-dot done"></div>
+      <div class="tl-date">2026-03-03</div>
+      <div class="tl-title">Pre-Phase 9 — Multi-Project Sidebar, Inline Rename, Dev Signing</div>
+      <div class="tl-desc">Inline project name edit with 1200 ms debounce + auto-save + file rename. Multi-project list per profile with switch/remove. Add Application button. BuilderProfile skipSigning + devSignMode with interlock UI in Code Signing tab.</div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-dot done"></div>
+      <div class="tl-date">2026-03-03</div>
+      <div class="tl-title">Phase 9 — Install Dir Hints, Help &amp; Docs</div>
+      <div class="tl-desc">Per-platform install dir guidance in DirectoryPage + AppInfoEditor. Comprehensive docs/index.html. HelpPanel dockable viewer (QTextBrowser) with Back/Forward + Open-in-Browser. Ctrl+Shift+H toggle. Checked action syncs with dock close.</div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-dot done"></div>
+      <div class="tl-date">Done</div>
+      <div class="tl-title">Phase 8 — Log Window, Build History, Tooltips, Clock</div>
+      <div class="tl-desc">EventLog dock + theme adapter. Persistent build records with Reveal in Finder. Tab/toolbar tooltips. Live clock. AppInfoEditor live signals.</div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-dot done"></div>
+      <div class="tl-date">2026-03-03</div>
+      <div class="tl-title">Example Installers — ACME Widgets cross-platform package</div>
+      <div class="tl-desc">AcmeWidgets.mis full-feature manifest. macOS .pkg (pkgbuild+productbuild, native wizard). Linux .deb (dpkg-deb, DEBIAN/control + maintainer scripts). Windows NSIS script + PowerShell builder. Manifest.cpp file-entry indent bug fixed. Dark theme lightened to navy-blue; Enterprise sidebar bleed fixed via QSS object names.</div>
+    </div>
+    <div class="tl-item">
+      <div class="tl-dot"></div>
+      <div class="tl-date">Next</div>
+      <div class="tl-title">Phase 10 — Windows &amp; Linux Native Ports</div>
+      <div class="tl-desc">Build Studio + miscc on Windows (VS2022/MSVC + Qt6) and Linux (Ubuntu 22.04 + Qt6). Windows-specific runtime (UAC, registry, NSIS makensis). Linux-specific runtime (pkexec, desktop entries, ldconfig). CI/CD GitHub Actions matrix. ACME Widgets example built and verified on all platforms.</div>
+    </div>
+  </div>
+</section>
+
+<!-- ── Phase 8 Detail ────────────────────────────────────────────────────── -->
+<section>
+  <h2>Phase 8 — Feature Detail</h2>
+  <div class="feature-grid">
+    <div class="feature-box">
+      <h4>EventLog Dock</h4>
+      <ul>
+        <li>QDockWidget, monospace QPlainTextEdit</li>
+        <li>Levels: INFO / WARN / ERROR / BUILD / DEBUG</li>
+        <li>Color-coded lines; max 10 000 blocks; auto-scroll</li>
+        <li>Connected to BuildPanel + project load/save + validation</li>
+        <li>Clear and Export (.txt) buttons</li>
+        <li>New file: <code>studio/EventLog.h/.cpp</code></li>
+      </ul>
+    </div>
+    <div class="feature-box">
+      <h4>Build History</h4>
+      <ul>
+        <li>BuildRecord: appName, appVersion, platform, timestamp, outputPath, codeSign, success</li>
+        <li>Persisted as JSON at QStandardPaths::AppDataLocation</li>
+        <li>Dialog or dock table; "Reveal in Finder" per row</li>
+        <li>Populated from BuildPanel::buildFinished() signal</li>
+        <li>New files: <code>studio/BuildHistory.h/.cpp</code></li>
+      </ul>
+    </div>
+    <div class="feature-box">
+      <h4>Tooltips</h4>
+      <ul>
+        <li>setToolTip() on every QLineEdit, QPushButton, QCheckBox, QComboBox</li>
+        <li>setTabToolTip() on all 9 Studio tabs</li>
+        <li>Toolbar QAction::setToolTip() for every action</li>
+        <li>Inline help text for cryptic fields (identifiers, paths, signing)</li>
+      </ul>
+    </div>
+    <div class="feature-box">
+      <h4>Status Bar Clock</h4>
+      <ul>
+        <li>QTimer (1 s) → QLabel with current date + time</li>
+        <li>"Studio v1.0.0" permanent label</li>
+        <li>"Project: {appName} v{appVersion}" — live from AppInfoEditor</li>
+        <li>statusBar()->addPermanentWidget() (right-aligned)</li>
+        <li>AppInfoEditor emits projectInfoChanged(name, version) on field edit</li>
+      </ul>
+    </div>
+  </div>
+</section>
+
+<!-- ── Architecture ──────────────────────────────────────────────────────── -->
+<section>
+  <h2>Architecture</h2>
+  <div class="arch">
+    <div class="arch-box">
+      <h3>Studio IDE (Mcaster1InstallStudio)</h3>
+      <pre>StudioMainWindow
+  ├── ProjectSidebar         (left nav tree)
+  ├── QTabWidget (9 tabs)
+  │   ├── AppInfoEditor      (app metadata + defaults + theme)
+  │   ├── FilesEditor        (components + files)
+  │   ├── ComponentsEditor   (deps + flags)
+  │   ├── ShortcutsEditor    (shortcuts table)
+  │   ├── RegistryEditor     (registry entries)
+  │   ├── SecurityEditor     (signing credentials)
+  │   ├── PrerequisitesEditor(prereq list+form)
+  │   ├── CustomActionsEditor(actions table)
+  │   └── BuildPanel         (build + test)
+  ├── BuildLog dock          (QPlainTextEdit)
+  └── StatusBar              (status + clock)</pre>
+    </div>
+    <div class="arch-box">
+      <h3>Runtime Installer (Mcaster1Installer)</h3>
+      <pre>InstallerWizard (QWizard)
+  ├── WelcomePage     (PageId 0)
+  ├── LicensePage     (PageId 1)
+  ├── PrerequisitesPage (PageId 2, conditional)
+  ├── ComponentsPage  (PageId 3)
+  ├── DirectoryPage   (PageId 4)
+  ├── ReadyPage       (PageId 5)
+  ├── InstallPage     (PageId 6)
+  │   └── InstallEngine (QThread)
+  └── FinishPage      (PageId 7)
+
+Manifest data flow:
+  .mis file → InstallerWizard → pages read manifest()
+  Components → selectedComponents → InstallEngine
+  InstallEngine → copies files, creates shortcuts,
+                  writes registry, runs custom actions,
+                  writes uninstall manifest</pre>
+    </div>
+  </div>
+</section>
+
+<!-- ── File Inventory ────────────────────────────────────────────────────── -->
+<section>
+  <h2>File Inventory</h2>
+  <table class="file-table">
+    <thead>
+      <tr><th>File</th><th>Component</th><th>Status</th><th>Notes</th></tr>
+    </thead>
+    <tbody>
+      <tr><td><code>manifest/Manifest.h</code></td><td>Shared</td>
+          <td><span class="tag tag-complete">Complete</span></td>
+          <td>All structs: AppInfo, Component, Prerequisite, CustomAction, SigningConfig, WizardTheme</td></tr>
+      <tr><td><code>manifest/Manifest.cpp</code></td><td>Shared</td>
+          <td><span class="tag tag-complete">Complete</span></td>
+          <td>YAML serializer/parser; toYaml() / fromYaml()</td></tr>
+      <tr><td><code>backends/MacOsBackend.cpp</code></td><td>Studio</td>
+          <td><span class="tag tag-complete">Complete</span></td>
+          <td>hdiutil create, codesign, notarize</td></tr>
+      <tr><td><code>backends/WindowsBackend.cpp</code></td><td>Studio</td>
+          <td><span class="tag tag-complete">Complete</span></td>
+          <td>Generates .nsi script; calls makensis</td></tr>
+      <tr><td><code>backends/LinuxBackend.cpp</code></td><td>Studio</td>
+          <td><span class="tag tag-complete">Complete</span></td>
+          <td>.deb dpkg-deb + AppImage appimagetool</td></tr>
+      <tr><td><code>studio/StudioMainWindow.cpp</code></td><td>Studio</td>
+          <td><span class="tag tag-complete">Complete</span></td>
+          <td>9 tabs, sidebar, build log dock, status bar</td></tr>
+      <tr><td><code>studio/AppInfoEditor.cpp</code></td><td>Studio</td>
+          <td><span class="tag tag-complete">Complete</span></td>
+          <td>App name/version/publisher/id/icon/license/theme</td></tr>
+      <tr><td><code>studio/FilesEditor.cpp</code></td><td>Studio</td>
+          <td><span class="tag tag-complete">Complete</span></td>
+          <td>Component + file table editor</td></tr>
+      <tr><td><code>studio/ComponentsEditor.cpp</code></td><td>Studio</td>
+          <td><span class="tag tag-complete">Complete</span></td>
+          <td>Dependency flags, platforms</td></tr>
+      <tr><td><code>studio/ShortcutsEditor.cpp</code></td><td>Studio</td>
+          <td><span class="tag tag-complete">Complete</span></td>
+          <td>Shortcut table: name, target, type, icon</td></tr>
+      <tr><td><code>studio/RegistryEditor.cpp</code></td><td>Studio</td>
+          <td><span class="tag tag-complete">Complete</span></td>
+          <td>Windows registry: hive, key, value, type</td></tr>
+      <tr><td><code>studio/SecurityEditor.cpp</code></td><td>Studio</td>
+          <td><span class="tag tag-complete">Complete</span></td>
+          <td>Signing credentials for all platforms</td></tr>
+      <tr><td><code>studio/PrerequisitesEditor.cpp</code></td><td>Studio</td>
+          <td><span class="tag tag-complete">Complete</span></td>
+          <td>Phase 7: list+detail form; id/name/checkCmd/installCmd/platforms</td></tr>
+      <tr><td><code>studio/CustomActionsEditor.cpp</code></td><td>Studio</td>
+          <td><span class="tag tag-complete">Complete</span></td>
+          <td>Phase 7: table + QComboBox trigger/type</td></tr>
+      <tr><td><code>studio/BuildPanel.cpp</code></td><td>Studio</td>
+          <td><span class="tag tag-complete">Complete</span></td>
+          <td>Multi-platform queue; Test Installer button</td></tr>
+      <tr><td><code>studio/CodeSignDialog.cpp</code></td><td>Studio</td>
+          <td><span class="tag tag-complete">Complete</span></td>
+          <td>Phase 4: sign + notarize + cert gen + PEM→PFX</td></tr>
+      <tr><td><code>studio/SvgIcons.h</code></td><td>Studio</td>
+          <td><span class="tag tag-complete">Complete</span></td>
+          <td>25 inline SVG icons (Phase 6)</td></tr>
+      <tr><td><code>studio/EventLog.h/.cpp</code></td><td>Studio</td>
+          <td><span class="tag tag-complete">Complete</span></td>
+          <td>Phase 8: event log dock (QDockWidget, 5 levels, color-coded, export)</td></tr>
+      <tr><td><code>studio/BuildHistory.h/.cpp</code></td><td>Studio</td>
+          <td><span class="tag tag-complete">Complete</span></td>
+          <td>Phase 8: persistent JSON build records, Reveal in Finder, right-click menu</td></tr>
+      <tr><td><code>runtime/InstallerWizard.cpp</code></td><td>Runtime</td>
+          <td><span class="tag tag-complete">Complete</span></td>
+          <td>PageId enum 0-7; conditional Prerequisites page</td></tr>
+      <tr><td><code>runtime/PrerequisitesPage.cpp</code></td><td>Runtime</td>
+          <td><span class="tag tag-complete">Complete</span></td>
+          <td>Phase 7: check table; sh/cmd.exe; advisory; Recheck All</td></tr>
+      <tr><td><code>runtime/InstallEngine.cpp</code></td><td>Runtime</td>
+          <td><span class="tag tag-complete">Complete</span></td>
+          <td>QThread: file copy, shortcuts, registry, custom actions</td></tr>
+      <tr><td><code>docs/index.html</code></td><td>Docs</td>
+          <td><span class="tag tag-complete">Complete</span></td>
+          <td>Phase 9: 670-line styled help page; auto-copied to app bundle Resources/docs/</td></tr>
+      <tr><td><code>studio/HelpPanel.h/.cpp</code></td><td>Studio</td>
+          <td><span class="tag tag-complete">Complete</span></td>
+          <td>Phase 9: QTextBrowser dock, Back/Forward, Open-in-Browser, Ctrl+Shift+H</td></tr>
+      <tr><td><code>examples/AcmeWidgets/AcmeWidgets.mis</code></td><td>Examples</td>
+          <td><span class="tag tag-complete">Complete</span></td>
+          <td>Full cross-platform manifest: 3 components, prerequisites, shortcuts, registry, custom actions</td></tr>
+      <tr><td><code>examples/AcmeWidgets/build-macos-pkg.sh</code></td><td>Examples</td>
+          <td><span class="tag tag-complete">Complete</span></td>
+          <td>pkgbuild+productbuild; Welcome/License/Conclusion pages; pre/postinstall scripts; tested ✓</td></tr>
+      <tr><td><code>examples/AcmeWidgets/build-linux-deb.sh</code></td><td>Examples</td>
+          <td><span class="tag tag-complete">Complete</span></td>
+          <td>dpkg-deb staging tree + DEBIAN/control + maintainer scripts; tested ✓</td></tr>
+      <tr><td><code>examples/AcmeWidgets/windows/AcmeWidgets.nsi</code></td><td>Examples</td>
+          <td><span class="tag tag-complete">Complete</span></td>
+          <td>Full NSIS MUI2 wizard; 5 components; registry; shortcuts; needs makensis on Windows</td></tr>
+      <tr><td><code>importers/NsisImporter.cpp</code></td><td>Studio</td>
+          <td><span class="tag tag-partial">Partial</span></td>
+          <td>Phase 2: regex parser; edge cases remain</td></tr>
+      <tr><td><code>importers/InnoSetupImporter.cpp</code></td><td>Studio</td>
+          <td><span class="tag tag-partial">Partial</span></td>
+          <td>Phase 2: regex parser; edge cases remain</td></tr>
+    </tbody>
+  </table>
+</section>
+
+</div><!-- /container -->
+
+<footer>
+  Mcaster1 Install System &bull; Planning Tracker &bull; Updated 2026-03-03 (examples + Phase 10 planned) &bull;
+  <a href="index.html">Back to Docs</a>
+</footer>
+
+</body>
+</html>

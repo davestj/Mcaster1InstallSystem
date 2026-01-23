@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="utf-8"?>
+<installer-gui-script minSpecVersion="2">
+
+    <!-- Application metadata -->
+    <title>Acme Widgets 2.1.0</title>
+    <organization>com.acme-corp</organization>
+    <domains enable_anywhere="false"
+             enable_currentUserHome="false"
+             enable_localSystem="true"/>
+    <options customize="allow"
+             allow-external-scripts="false"
+             rootVolumeOnly="false"
+             hostArchitectures="arm64 x86_64"/>
+
+    <!-- Wizard pages -->
+    <welcome    file="Welcome.html"    mime-type="text/html"/>
+    <license    file="LICENSE.txt"     mime-type="text/plain"/>
+    <conclusion file="Conclusion.html" mime-type="text/html"/>
+
+    <!-- Component choices -->
+    <choice id="com.acme-corp.acme-widgets.core"
+            title="Acme Widgets Application"
+            description="The main acme-widgets binary, default configuration and shared data files. Required."
+            enabled="false"
+            selected="true">
+        <pkg-ref id="com.acme-corp.acme-widgets"/>
+    </choice>
+
+    <!-- Choices outline (installer sidebar) -->
+    <choices-outline>
+        <line choice="com.acme-corp.acme-widgets.core"/>
+    </choices-outline>
+
+    <!-- Package reference -->
+    <pkg-ref id="com.acme-corp.acme-widgets"
+             version="2.1.0"
+             onConclusion="none">AcmeWidgets-component.pkg</pkg-ref>
+
+</installer-gui-script>

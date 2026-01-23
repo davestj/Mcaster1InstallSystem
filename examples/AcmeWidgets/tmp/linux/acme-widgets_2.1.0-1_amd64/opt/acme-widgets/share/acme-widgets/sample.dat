@@ -1,0 +1,15 @@
+# acme-widgets sample data file
+# This file demonstrates the widget configuration data format.
+# In a production installation, this directory holds live widget state.
+#
+# Format: widget-id|name|type|version|status|config-key=value,...
+
+acme-clock-widget|ACME Desktop Clock|clock|1.0|active|timezone=America/Chicago,format=24h,show_seconds=true
+acme-weather-widget|ACME Weather Widget|weather|2.3|active|location=Dallas+TX,units=imperial,refresh_interval=900
+acme-stock-widget|ACME Stock Ticker|finance|1.8|disabled|symbols=ACME+GOOG+MSFT,refresh_interval=60,currency=USD
+
+# ── Widget event log (demo) ────────────────────────────────────────────────
+2025-01-15T09:00:01Z INFO  acme-clock-widget started successfully
+2025-01-15T09:00:02Z INFO  acme-weather-widget fetched Dallas TX: 72°F, Sunny
+2025-01-15T09:00:05Z WARN  acme-stock-widget is disabled — skipping startup
+2025-01-15T09:05:00Z INFO  acme-weather-widget refresh OK (next: 15 min)

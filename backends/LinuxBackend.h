@@ -27,7 +27,7 @@ public:
     QString outputFilename(const Manifest &m) const override;
 
 private:
-    QString generateDebControl(const Manifest &m) const;
+    QString generateDebControl(const Manifest &m, const QString &payloadPath) const;
     bool    buildDebPackage(const QString &stageDir, const QString &debPath) const;
     bool    buildAppDir(const Manifest &m, const QString &projectDir,
                         const QString &appDir) const;

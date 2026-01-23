@@ -1,0 +1,125 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  miscc.vcxproj — Mcaster1 Install Spec Compiler (CLI)
+  VS2022 / MSVC x64  |  Qt6 Core + Concurrent only  |  Console application
+-->
+<Project DefaultTargets="Build" ToolsVersion="17.0"
+         xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <!-- ── Configuration matrix ─────────────────────────────────────────────── -->
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+
+  <!-- ── Project globals ──────────────────────────────────────────────────── -->
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{C6D7E8F9-A0B1-2C3D-4E5F-607182B4C5D6}</ProjectGuid>
+    <RootNamespace>miscc</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <Keyword>Win32Proj</Keyword>
+  </PropertyGroup>
+
+  <!-- ── Import Qt6 + Common property sheets ──────────────────────────────── -->
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+  <Import Project="props\Qt6.props" Condition="Exists('props\Qt6.props')" />
+  <Import Project="props\Common.props" Condition="Exists('props\Common.props')" />
+
+  <!-- ── Per-configuration properties ────────────────────────────────────── -->
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+    <SubSystem>Console</SubSystem>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+    <SubSystem>Console</SubSystem>
+  </PropertyGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+
+  <!-- ── Include / lib paths ──────────────────────────────────────────────── -->
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>
+        $(ProjectDir)..\cli;
+        $(ProjectDir)..\manifest;
+        $(ProjectDir)..\studio;
+        $(ProjectDir)..\backends;
+        $(QtIncludeDir);
+        $(QtIncludeDir)\QtCore;
+        $(QtIncludeDir)\QtConcurrent;
+        %(AdditionalIncludeDirectories)
+      </AdditionalIncludeDirectories>
+      <PreprocessorDefinitions>WIN32;_CONSOLE;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <AdditionalLibraryDirectories>$(QtLibDir);%(AdditionalLibraryDirectories)</AdditionalLibraryDirectories>
+      <AdditionalDependencies>
+        Qt6Core$(QtLibSuffix).lib;
+        Qt6Concurrent$(QtLibSuffix).lib;
+        %(AdditionalDependencies)
+      </AdditionalDependencies>
+      <SubSystem>Console</SubSystem>
+    </Link>
+  </ItemDefinitionGroup>
+
+  <!-- ── Source files ─────────────────────────────────────────────────────── -->
+  <ItemGroup>
+    <ClCompile Include="..\cli\miscc.cpp" />
+    <ClCompile Include="..\manifest\Manifest.cpp" />
+    <ClCompile Include="..\backends\MacOsBackend.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\backends\WindowsBackend.cpp" />
+    <ClCompile Include="..\backends\LinuxBackend.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\backends\CodeSigner.cpp" />
+    <ClCompile Include="..\backends\CertGenerator.cpp" />
+  </ItemGroup>
+
+  <!-- ── MOC headers (Qt meta-object compiler) ────────────────────────────── -->
+  <ItemGroup Condition="Exists('$(QtMsBuild)\qt.targets')">
+    <QtMoc Include="..\manifest\Manifest.h" />
+  </ItemGroup>
+
+  <!-- ── Headers (non-MOC) ────────────────────────────────────────────────── -->
+  <ItemGroup>
+    <ClInclude Include="..\studio\BuilderProfile.h" />
+    <ClInclude Include="..\backends\BuildBackend.h" />
+    <ClInclude Include="..\backends\WindowsBackend.h" />
+    <ClInclude Include="..\backends\CodeSigner.h" />
+    <ClInclude Include="..\backends\CertGenerator.h" />
+  </ItemGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+
+  <!-- ── Qt MOC / build targets (conditional on Qt VS Tools) ─────────────── -->
+  <ImportGroup Condition="Exists('$(QtMsBuild)\qt.props')">
+    <Import Project="$(QtMsBuild)\qt.props" />
+  </ImportGroup>
+  <ImportGroup Condition="Exists('$(QtMsBuild)\qt.targets')">
+    <Import Project="$(QtMsBuild)\qt.targets" />
+  </ImportGroup>
+
+  <!-- ── Post-build: deploy Qt DLLs (Release only) ────────────────────────── -->
+  <Target Name="WinDeployQt"
+          AfterTargets="Build"
+          Condition="'$(Configuration)'=='Release' And '$(RunWinDeployQt)'=='true'">
+    <Exec Command="&quot;$(QtBinDir)\windeployqt.exe&quot; --no-translations --no-quick-import &quot;$(TargetPath)&quot;" />
+  </Target>
+
+</Project>

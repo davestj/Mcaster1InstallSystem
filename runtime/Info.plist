@@ -1,0 +1,30 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN"
+    "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>CFBundleName</key>
+    <string>Installer</string>
+    <key>CFBundleDisplayName</key>
+    <string>Installer</string>
+    <key>CFBundleIdentifier</key>
+    <string>com.mcaster1.installer</string>
+    <key>CFBundleVersion</key>
+    <string>1.0.0</string>
+    <key>CFBundleShortVersionString</key>
+    <string>1.0.0</string>
+    <key>CFBundleExecutable</key>
+    <string>Mcaster1Installer</string>
+    <key>CFBundleIconFile</key>
+    <string>mcaster1.icns</string>
+    <key>CFBundlePackageType</key>
+    <string>APPL</string>
+    <key>NSHighResolutionCapable</key>
+    <true/>
+    <key>NSSupportsAutomaticGraphicsSwitching</key>
+    <true/>
+    <!-- This installer may need admin rights to write to /Applications -->
+    <key>NSHumanReadableCopyright</key>
+    <string>Copyright © 2025 Mcaster1</string>
+</dict>
+</plist>

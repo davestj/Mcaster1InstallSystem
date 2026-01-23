@@ -1,0 +1,9 @@
+#!/bin/sh
+set -e
+case "$1" in
+    purge)
+        rm -rf /var/log/acme-widgets
+        rm -rf /opt/acme-widgets
+        ;;
+esac
+exit 0

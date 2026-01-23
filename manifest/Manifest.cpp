@@ -31,6 +31,8 @@ static QString emitFileEntry(const FileEntry &fe, int ind)
         s += indent(ind + 1) + "chmod: " + yq(fe.chmod) + "\n";
     if (fe.isDir)
         s += indent(ind + 1) + "dir: true\n";
+    if (!fe.platforms.isEmpty())
+        s += indent(ind + 1) + "platforms: [" + fe.platforms.join(", ") + "]\n";
     return s;
 }
 
@@ -87,6 +89,43 @@ QString Manifest::toYaml() const
         ts << "  dark-mode: true\n";
     }
 
+    // ── signing ───────────────────────────────────────────────────────────────
+    const bool hasSigningConfig =
+        !signing.macosSigner.isEmpty() || !signing.winPfxPath.isEmpty()
+        || !signing.linuxGpgKey.isEmpty() || signing.macosNotarize
+        || signing.linuxSignDebs;
+    if (hasSigningConfig) {
+        ts << "\nsigning:\n";
+        if (!signing.macosSigner.isEmpty())
+        ts << "  macos-signer:   " << yq(signing.macosSigner)   << "\n";
+        if (!signing.macosTeamId.isEmpty())
+        ts << "  macos-team-id:  " << yq(signing.macosTeamId)   << "\n";
+        ts << "  macos-hardened: " << (signing.macosHardened ? "true" : "false") << "\n";
+        if (signing.macosNotarize)
+        ts << "  macos-notarize: true\n";
+        if (!signing.macosProfile.isEmpty())
+        ts << "  macos-profile:  " << yq(signing.macosProfile)  << "\n";
+        if (!signing.winPfxPath.isEmpty())
+        ts << "  win-pfx-path:   " << yq(signing.winPfxPath)    << "\n";
+        if (!signing.winTimestampUrl.isEmpty())
+        ts << "  win-timestamp:  " << yq(signing.winTimestampUrl)<< "\n";
+        if (!signing.linuxGpgKey.isEmpty())
+        ts << "  linux-gpg-key:  " << yq(signing.linuxGpgKey)   << "\n";
+        if (signing.linuxSignDebs)
+        ts << "  linux-sign-debs: true\n";
+    }
+
+    // ── app-groups ────────────────────────────────────────────────────────────
+    if (!appGroups.isEmpty()) {
+        ts << "\napp-groups:\n";
+        for (const auto &g : appGroups) {
+            ts << "  - id:          " << yq(g.id)          << "\n";
+            ts << "    name:        " << yq(g.name)         << "\n";
+            if (!g.description.isEmpty())
+            ts << "    description: " << yq(g.description)  << "\n";
+        }
+    }
+
     // ── prerequisites ─────────────────────────────────────────────────────────
     if (!prerequisites.isEmpty()) {
         ts << "\nprerequisites:\n";
@@ -110,14 +149,16 @@ QString Manifest::toYaml() const
         ts << "    description: " << yq(comp.description)  << "\n";
         ts << "    required:    " << (comp.required  ? "true" : "false") << "\n";
         ts << "    selected:    " << (comp.selected  ? "true" : "false") << "\n";
+        if (!comp.appGroup.isEmpty())
+        ts << "    app-group:   " << yq(comp.appGroup)             << "\n";
         if (!comp.platforms.isEmpty())
-        ts << "    platforms:   [" << comp.platforms.join(", ") << "]\n";
+        ts << "    platforms:   [" << comp.platforms.join(", ")    << "]\n";
         if (!comp.depends.isEmpty())
-        ts << "    depends:     [" << comp.depends.join(", ")   << "]\n";
+        ts << "    depends:     [" << comp.depends.join(", ")      << "]\n";
         if (!comp.files.isEmpty()) {
             ts << "    files:\n";
             for (const auto &fe : comp.files)
-                ts << emitFileEntry(fe, 6);
+                ts << emitFileEntry(fe, 3);   // indent(3)=6sp → parser ind==6 ✓
         }
     }
 
@@ -207,30 +248,6 @@ static QString unquote(const QString &v)
 
 static bool toBool(const QString &v) { return (v == "true" || v == "yes" || v == "1"); }
 
-// Find lines belonging to a section (at a given indent level)
-// Returns index range [first, last) of child lines.
-// A "section" starts at line startLine (the parent key line).
-static QStringList childLines(const QStringList &lines, int parentIndent)
-{
-    QStringList result;
-    for (const QString &l : lines) {
-        QString stripped = stripLine(l);
-        if (stripped.isEmpty()) continue;
-        int ind = l.size() - l.trimmed().size();
-        if (ind > parentIndent) result << l;
-        else if (!stripped.isEmpty()) break; // back to same or lower indent
-    }
-    return result;
-}
-
-// Parse a scalar key: value line — returns value string
-static QString scalarValue(const QString &line)
-{
-    int colon = line.indexOf(':');
-    if (colon < 0) return {};
-    return unquote(line.mid(colon + 1).trimmed());
-}
-
 } // namespace
 
 // ══════════════════════════════════════════════════════════════════════════════
@@ -274,11 +291,15 @@ bool Manifest::fromYaml(const QString &yaml, QString *errOut)
     Prerequisite currentPrereq;
     bool inPrereq = false;
 
+    AppGroup currentGroup;
+    bool inGroup = false;
+
     // Reset all fields
-    app = {}; defaults = {}; theme = {};
-    components.clear(); shortcuts.clear(); registry.clear();
+    app = {}; defaults = {}; theme = {}; signing = {};
+    appGroups.clear(); components.clear(); shortcuts.clear(); registry.clear();
     prerequisites.clear(); customActions.clear(); targets.clear();
 
+    auto flushGroup = [&]() { if (inGroup) { appGroups.append(currentGroup); currentGroup = {}; inGroup = false; } };
     auto flushComp = [&]() {
         if (inComp) {
             if (inFileItem) { currentComp.files.append(currentFile); inFileItem = false; }
@@ -301,9 +322,10 @@ bool Manifest::fromYaml(const QString &yaml, QString *errOut)
         // Top-level section detection (indent == 0, no dash)
         if (ind == 0 && !stripped.startsWith('-')) {
             // Flush any pending objects when leaving a section
-            if (section == "components") flushComp();
-            if (section == "shortcuts")  flushSC();
-            if (section == "registry")   flushReg();
+            if (section == "app-groups")     flushGroup();
+            if (section == "components")     flushComp();
+            if (section == "shortcuts")      flushSC();
+            if (section == "registry")       flushReg();
             if (section == "custom-actions") flushCA();
             if (section == "prerequisites")  flushPre();
 
@@ -354,10 +376,44 @@ bool Manifest::fromYaml(const QString &yaml, QString *errOut)
             continue;
         }
 
+        // ── signing ───────────────────────────────────────────────────────────
+        if (section == "signing" && ind == 2) {
+            if      (k == "macos-signer")    signing.macosSigner    = v;
+            else if (k == "macos-team-id")   signing.macosTeamId    = v;
+            else if (k == "macos-hardened")  signing.macosHardened  = toBool(v);
+            else if (k == "macos-notarize")  signing.macosNotarize  = toBool(v);
+            else if (k == "macos-profile")   signing.macosProfile   = v;
+            else if (k == "win-pfx-path")    signing.winPfxPath     = v;
+            else if (k == "win-timestamp")   signing.winTimestampUrl= v;
+            else if (k == "linux-gpg-key")   signing.linuxGpgKey    = v;
+            else if (k == "linux-sign-debs") signing.linuxSignDebs  = toBool(v);
+            continue;
+        }
+
         // ── targets ───────────────────────────────────────────────────────────
         if (section == "targets" && stripped.startsWith("- ")) {
             targets << stripped.mid(2).trimmed();
             continue;
+        }
+
+        // ── app-groups ────────────────────────────────────────────────────────
+        if (section == "app-groups") {
+            if (ind == 2 && stripped.startsWith("- ")) {
+                flushGroup();
+                currentGroup = {}; inGroup = true;
+                QString rest = stripped.mid(2).trimmed();
+                if (rest.startsWith("id:"))
+                    currentGroup.id = unquote(rest.mid(3).trimmed());
+                else if (!rest.isEmpty())
+                    currentGroup.id = unquote(rest);
+                continue;
+            }
+            if (inGroup && ind == 4) {
+                if      (k == "id")          currentGroup.id          = v;
+                else if (k == "name")        currentGroup.name        = v;
+                else if (k == "description") currentGroup.description = v;
+                continue;
+            }
         }
 
         // ── prerequisites ─────────────────────────────────────────────────────
@@ -396,6 +452,7 @@ bool Manifest::fromYaml(const QString &yaml, QString *errOut)
                 else if (k == "required")    currentComp.required    = toBool(v);
                 else if (k == "selected")    currentComp.selected    = toBool(v);
                 else if (k == "files")       inFiles = true;
+                else if (k == "app-group")   currentComp.appGroup = v;
                 else if (k == "depends" && v.startsWith('['))
                     currentComp.depends = v.remove('[').remove(']').split(',', Qt::SkipEmptyParts);
                 else if (k == "platforms" && v.startsWith('['))
@@ -414,10 +471,12 @@ bool Manifest::fromYaml(const QString &yaml, QString *errOut)
                     continue;
                 }
                 if (inFileItem && ind == 8) {
-                    if (k == "src")   currentFile.src   = v;
+                    if      (k == "src")   currentFile.src   = v;
                     else if (k == "dst")   currentFile.dst   = v;
                     else if (k == "chmod") currentFile.chmod = v;
                     else if (k == "dir")   currentFile.isDir = toBool(v);
+                    else if (k == "platforms" && v.startsWith('['))
+                        currentFile.platforms = v.remove('[').remove(']').split(',', Qt::SkipEmptyParts);
                     continue;
                 }
             }
@@ -478,9 +537,10 @@ bool Manifest::fromYaml(const QString &yaml, QString *errOut)
     }
 
     // Flush last pending objects
-    if (section == "components") flushComp();
-    if (section == "shortcuts")  flushSC();
-    if (section == "registry")   flushReg();
+    if (section == "app-groups")     flushGroup();
+    if (section == "components")     flushComp();
+    if (section == "shortcuts")      flushSC();
+    if (section == "registry")       flushReg();
     if (section == "custom-actions") flushCA();
     if (section == "prerequisites")  flushPre();
 
@@ -561,12 +621,20 @@ Manifest Manifest::newProject()
     m.defaults.installDirWindows = "C:\\Program Files\\{publisher}\\{name}";
     m.defaults.installDirLinux   = "/opt/{publisher}";
 
+    // Default app group
+    AppGroup grp;
+    grp.id   = "app1";
+    grp.name = "My Application";
+    grp.description = "Primary application deliverable.";
+    m.appGroups.append(grp);
+
     Component core;
     core.id          = "core";
     core.name        = "Core Application";
     core.description = "Main application files (required).";
     core.required    = true;
     core.selected    = true;
+    core.appGroup    = "app1";
 
     FileEntry fe;
     fe.src = "payload/MyApp.app";

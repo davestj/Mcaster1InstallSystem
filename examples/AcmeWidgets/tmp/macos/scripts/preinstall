@@ -1,0 +1,6 @@
+#!/bin/bash
+# Pre-install: stop any running widget service
+if [ -f "/Applications/ACME Widgets/bin/acme-widgets" ]; then
+    /Applications/ACME\ Widgets/bin/acme-widgets stop 2>/dev/null || true
+fi
+exit 0

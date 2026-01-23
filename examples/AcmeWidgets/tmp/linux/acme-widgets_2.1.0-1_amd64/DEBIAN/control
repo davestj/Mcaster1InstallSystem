@@ -1,0 +1,17 @@
+Package: acme-widgets
+Version: 2.1.0-1
+Section: utils
+Priority: optional
+Architecture: amd64
+Installed-Size: 32
+Maintainer: ACME Corporation <support@acme-corp.example.com>
+Homepage: https://www.acme-corp.example.com/widgets
+Description: A cross-platform widget toolkit for managing and deploying ACME products.
+ Acme Widgets provides a cross-platform widget runtime for ACME products.
+ .
+ This package installs the acme-widgets CLI and default configuration.
+ .
+ Supported widgets:
+  - acme-clock-widget: Desktop clock integration
+  - acme-weather-widget: Live weather data
+  - acme-stock-widget: Market data (optional, disabled by default)

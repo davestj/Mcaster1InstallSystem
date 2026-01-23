@@ -1,0 +1,55 @@
+ACME Widgets — Change Log
+=========================
+
+────────────────────────────────────────────────────────────────────────────
+Version 2.1.0  (2025-01-15)
+────────────────────────────────────────────────────────────────────────────
+New Features:
+  • Added acme-stock-widget support (real-time market data integration)
+  • New CLI command: `acme-widgets list` — lists all configured widgets
+  • Dark mode support in display settings (theme = dark)
+  • TLS 1.3 support when tls-enabled = true in [Security] section
+  • Widget auto-discovery at startup (auto-start = true)
+
+Improvements:
+  • 40% faster startup time on macOS and Linux
+  • Reduced memory footprint (cache-size-mb default reduced from 128 → 64)
+  • Improved error messages for misconfigured widget definitions
+  • Service start/stop now supports graceful shutdown (SIGTERM handling)
+
+Bug Fixes:
+  • Fixed: idle-timeout setting was ignored on Windows
+  • Fixed: config file not found when install path contains spaces
+  • Fixed: acme-weather-widget failed to fetch data on macOS 14+
+
+────────────────────────────────────────────────────────────────────────────
+Version 2.0.3  (2024-09-22)
+────────────────────────────────────────────────────────────────────────────
+Bug Fixes:
+  • Fixed: service crash when max-connections exceeded on Linux
+  • Fixed: config parser rejected Unicode characters in widget names
+  • Fixed: port conflict detection on Windows when service already running
+
+────────────────────────────────────────────────────────────────────────────
+Version 2.0.0  (2024-06-01)
+────────────────────────────────────────────────────────────────────────────
+New Features:
+  • Complete rewrite of the widget runtime engine
+  • Cross-platform support: macOS, Windows, Linux
+  • New INI-style configuration format (acme-widgets.conf)
+  • REST API for widget status queries (port 8420)
+  • Authentication support (require-auth = true)
+
+Breaking Changes:
+  • Configuration format changed from XML to INI — see migration guide
+  • Minimum OS: macOS 12, Windows 10, Ubuntu 20.04 / Debian 11
+
+────────────────────────────────────────────────────────────────────────────
+Version 1.8.2  (2024-01-10)
+────────────────────────────────────────────────────────────────────────────
+  • Final 1.x release — maintenance patches only going forward
+  • Fixed: acme-stock-widget memory leak on long-running sessions
+
+──────────────────────────────────────────────────────────────────────────────
+For the full changelog visit: https://docs.acme-corp.example.com/widgets/changelog
+──────────────────────────────────────────────────────────────────────────────

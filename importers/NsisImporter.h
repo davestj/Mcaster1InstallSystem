@@ -1,15 +1,19 @@
 #pragma once
 /*
- * NsisImporter — Phase 2
- * Parses NSIS installer scripts (.nsi) and converts them to .mis Manifests.
+ * NsisImporter — NSIS script (.nsi) → .mis Manifest converter
  *
- * Supported sections:
- *   [Files]       → Component.files
- *   Section/SectionEnd blocks → Components
- *   CreateShortCut → Shortcuts
- *   Name / OutFile / InstallDir → AppInfo + InstallDefaults
- *   WriteRegStr → registry actions (future)
- *   VIProductVersion / VIAddVersionKey → AppInfo
+ * Single-pass state-machine parser. Handles:
+ *   Section / SectionEnd blocks → Component objects
+ *   SectionIn RO               → required component
+ *   SetOutPath                  → per-file destination directory
+ *   File / File /r              → FileEntry (isDir when /r)
+ *   CreateShortCut              → Shortcut
+ *   WriteRegStr / WriteRegDWORD → RegistryEntry
+ *   Name / VIProductVersion / VIAddVersionKey / InstallDir → AppInfo + InstallDefaults
+ *
+ * Hidden sections (Section -Post, Section -Prerequisites) are parsed for
+ * shortcuts and registry entries but not surfaced as user components.
+ * The Uninstall section is skipped entirely.
  */
 
 #include "../manifest/Manifest.h"
@@ -18,8 +22,6 @@
 class NsisImporter
 {
 public:
-    // Parse a .nsi file and produce a Manifest.
-    // Returns true on success; errors/warnings accumulated in messages().
     bool parse(const QString &nsiPath);
 
     const Manifest    &manifest()  const { return m_manifest; }
@@ -27,11 +29,6 @@ public:
     const QStringList &errors()    const { return m_errors; }
 
 private:
-    // TODO Phase 2: implement section-by-section parser
-    void parseFile(const QString &nsiPath);
-    void parseSection(const QStringList &lines, int &idx, Component &comp);
-    AppInfo parseFileHeader(const QStringList &lines);
-
     Manifest    m_manifest;
     QStringList m_warnings;
     QStringList m_errors;

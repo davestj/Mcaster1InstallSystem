@@ -1,0 +1,15 @@
+#!/bin/bash
+# Post-install: set correct ownership and permissions
+INSTALL_DIR="/Applications/ACME Widgets"
+chown -R root:wheel   "${INSTALL_DIR}" 2>/dev/null || true
+chmod -R 755          "${INSTALL_DIR}" 2>/dev/null || true
+chmod +x              "${INSTALL_DIR}/bin/acme-widgets" 2>/dev/null || true
+
+# Create log directory
+mkdir -p /var/log/acme-widgets
+chmod 755 /var/log/acme-widgets
+
+# macOS notification
+osascript -e 'display notification "Acme Widgets 2.1.0 installed successfully." with title "Installation Complete"' 2>/dev/null || true
+
+exit 0

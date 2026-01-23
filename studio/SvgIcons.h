@@ -158,6 +158,219 @@ static constexpr const char *kSettings = R"svg(
 </svg>
 )svg";
 
+// ── Trash / delete ────────────────────────────────────────────────────────────
+static constexpr const char *kTrash = R"svg(
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
+  <line x1="3" y1="6" x2="21" y2="6" stroke="#e0e0e8" stroke-width="1.6" stroke-linecap="round"/>
+  <path d="M8 6V4h8v2M19 6l-1 14H6L5 6"
+        stroke="#e0e0e8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <line x1="10" y1="11" x2="10" y2="17" stroke="#e0e0e8" stroke-width="1.4" stroke-linecap="round"/>
+  <line x1="14" y1="11" x2="14" y2="17" stroke="#e0e0e8" stroke-width="1.4" stroke-linecap="round"/>
+</svg>
+)svg";
+
+// ── Arrow up (move up / reorder) ──────────────────────────────────────────────
+static constexpr const char *kArrowUp = R"svg(
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
+  <line x1="12" y1="19" x2="12" y2="5"
+        stroke="#e0e0e8" stroke-width="1.8" stroke-linecap="round"/>
+  <polyline points="5 12 12 5 19 12"
+            stroke="#e0e0e8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+)svg";
+
+// ── Arrow down (move down / reorder) ─────────────────────────────────────────
+static constexpr const char *kArrowDown = R"svg(
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
+  <line x1="12" y1="5" x2="12" y2="19"
+        stroke="#e0e0e8" stroke-width="1.8" stroke-linecap="round"/>
+  <polyline points="19 12 12 19 5 12"
+            stroke="#e0e0e8" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+)svg";
+
+// ── Folder / browse ───────────────────────────────────────────────────────────
+static constexpr const char *kFolder = R"svg(
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
+  <path d="M22 19a2 2 0 0 1-2 2H4a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h5l2 3h9a2 2 0 0 1 2 2z"
+        stroke="#00c9ff" stroke-width="1.6" fill="#0f3460"/>
+</svg>
+)svg";
+
+// ── Refresh / reload ──────────────────────────────────────────────────────────
+static constexpr const char *kRefresh = R"svg(
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
+  <polyline points="23 4 23 10 17 10"
+            stroke="#e0e0e8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <polyline points="1 20 1 14 7 14"
+            stroke="#e0e0e8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M3.51 9a9 9 0 0 1 14.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0 0 20.49 15"
+        stroke="#e0e0e8" stroke-width="1.6" stroke-linecap="round"/>
+</svg>
+)svg";
+
+// ── About / info ──────────────────────────────────────────────────────────────
+static constexpr const char *kAbout = R"svg(
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
+  <circle cx="12" cy="12" r="10" stroke="#00c9ff" stroke-width="1.6"/>
+  <circle cx="12" cy="8" r="0.9" fill="#00c9ff"/>
+  <line x1="12" y1="12" x2="12" y2="16"
+        stroke="#00c9ff" stroke-width="1.8" stroke-linecap="round"/>
+</svg>
+)svg";
+
+// ── Quit / exit ───────────────────────────────────────────────────────────────
+static constexpr const char *kQuit = R"svg(
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
+  <path d="M9 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h4"
+        stroke="#e0e0e8" stroke-width="1.6" stroke-linecap="round"/>
+  <polyline points="16 17 21 12 16 7"
+            stroke="#e0e0e8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <line x1="21" y1="12" x2="9" y2="12"
+        stroke="#e0e0e8" stroke-width="1.6" stroke-linecap="round"/>
+</svg>
+)svg";
+
+// ── Sign / edit ───────────────────────────────────────────────────────────────
+static constexpr const char *kSign = R"svg(
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
+  <path d="M12 20h9" stroke="#e0e0e8" stroke-width="1.6" stroke-linecap="round"/>
+  <path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4Z"
+        stroke="#00c9ff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+)svg";
+
+// ── Check / verified ──────────────────────────────────────────────────────────
+static constexpr const char *kCheck = R"svg(
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
+  <circle cx="12" cy="12" r="10" stroke="#00c9ff" stroke-width="1.6" opacity="0.65"/>
+  <polyline points="8 12 11 15 16 9"
+            stroke="#00c9ff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+)svg";
+
+// ── Key / certificate ─────────────────────────────────────────────────────────
+static constexpr const char *kKey = R"svg(
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
+  <circle cx="8" cy="8" r="5" stroke="#00c9ff" stroke-width="1.6"/>
+  <path d="M14.4 9.6 20 15.2V20h-4v-3h-3v-3l-2-2"
+        stroke="#e0e0e8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+)svg";
+
+// ── Convert / exchange ────────────────────────────────────────────────────────
+static constexpr const char *kConvert = R"svg(
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
+  <polyline points="17 1 21 5 17 9"
+            stroke="#e0e0e8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M3 11V9a4 4 0 0 1 4-4h14"
+        stroke="#e0e0e8" stroke-width="1.6" stroke-linecap="round"/>
+  <polyline points="7 23 3 19 7 15"
+            stroke="#e0e0e8" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M21 13v2a4 4 0 0 1-4 4H3"
+        stroke="#e0e0e8" stroke-width="1.6" stroke-linecap="round"/>
+</svg>
+)svg";
+
+// ── Play / run / test ─────────────────────────────────────────────────────────
+static constexpr const char *kPlay = R"svg(
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
+  <polygon points="5 3 19 12 5 21 5 3"
+           stroke="#00c9ff" stroke-width="1.6" fill="#0f3460"
+           stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+)svg";
+
+// ── Prerequisites / checklist ─────────────────────────────────────────────────
+static constexpr const char *kPrereqs = R"svg(
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
+  <rect x="3" y="3" width="18" height="18" rx="2" stroke="#e0e0e8" stroke-width="1.4"
+        fill="#16213e"/>
+  <polyline points="7 8 9.5 11 13 7"
+            stroke="#00c9ff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <line x1="15" y1="9" x2="19" y2="9" stroke="#e0e0e8" stroke-width="1.4" stroke-linecap="round"/>
+  <polyline points="7 15 9.5 18 13 14"
+            stroke="#888899" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+  <line x1="15" y1="16" x2="19" y2="16" stroke="#888899" stroke-width="1.4" stroke-linecap="round"/>
+</svg>
+)svg";
+
+// ── Custom actions / lightning bolt ───────────────────────────────────────────
+static constexpr const char *kActions = R"svg(
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
+  <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"
+           stroke="#00c9ff" stroke-width="1.6" fill="#0f3460"
+           stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+)svg";
+
+// ── Builder profile / person ──────────────────────────────────────────────────
+static constexpr const char *kProfile = R"svg(
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
+  <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"
+        stroke="#00c9ff" stroke-width="1.6" stroke-linecap="round"/>
+  <circle cx="12" cy="7" r="4"
+          stroke="#00c9ff" stroke-width="1.6"/>
+</svg>
+)svg";
+
+// ── Build status: success (green check in circle) ─────────────────────────────
+static constexpr const char *kStatusOk = R"svg(
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
+  <circle cx="12" cy="12" r="10" fill="#1b3a1b" stroke="#66bb6a" stroke-width="1.6"/>
+  <polyline points="7 12 10 15 17 9"
+            stroke="#66bb6a" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+)svg";
+
+// ── Build status: failed (red X in circle) ────────────────────────────────────
+static constexpr const char *kStatusFail = R"svg(
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
+  <circle cx="12" cy="12" r="10" fill="#3a1b1b" stroke="#ef5350" stroke-width="1.6"/>
+  <line x1="8" y1="8" x2="16" y2="16" stroke="#ef5350" stroke-width="2.2" stroke-linecap="round"/>
+  <line x1="16" y1="8" x2="8" y2="16" stroke="#ef5350" stroke-width="2.2" stroke-linecap="round"/>
+</svg>
+)svg";
+
+// ── Build status: in progress (spinning arc) ──────────────────────────────────
+static constexpr const char *kStatusBuilding = R"svg(
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
+  <circle cx="12" cy="12" r="10" fill="#16213e" stroke="#0f3460" stroke-width="1.6"/>
+  <path d="M12 5 A7 7 0 0 1 19 12" stroke="#00c9ff" stroke-width="2.2"
+        stroke-linecap="round" fill="none"/>
+</svg>
+)svg";
+
+// ── Build status: idle (dash circle) ─────────────────────────────────────────
+static constexpr const char *kStatusIdle = R"svg(
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
+  <circle cx="12" cy="12" r="10" fill="#16213e" stroke="#333355" stroke-width="1.4"/>
+  <line x1="8" y1="12" x2="16" y2="12" stroke="#555577" stroke-width="2" stroke-linecap="round"/>
+</svg>
+)svg";
+
+// ── History / clock-with-arrow ────────────────────────────────────────────────
+static constexpr const char *kHistory = R"svg(
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
+  <polyline points="1 4 1 10 7 10" stroke="#e0e0e8" stroke-width="1.6"
+            stroke-linecap="round" stroke-linejoin="round"/>
+  <path d="M3.51 15a9 9 0 1 0 .49-6.51L1 10"
+        stroke="#e0e0e8" stroke-width="1.6" stroke-linecap="round"/>
+  <polyline points="12 7 12 12 16 14"
+            stroke="#00c9ff" stroke-width="1.6" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>
+)svg";
+
+// ── Log / terminal lines ──────────────────────────────────────────────────────
+static constexpr const char *kLog = R"svg(
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none">
+  <rect x="3" y="3" width="18" height="18" rx="2" stroke="#e0e0e8" stroke-width="1.4" fill="#16213e"/>
+  <line x1="7" y1="8"  x2="17" y2="8"  stroke="#00c9ff" stroke-width="1.2" stroke-linecap="round"/>
+  <line x1="7" y1="12" x2="15" y2="12" stroke="#888899" stroke-width="1.2" stroke-linecap="round"/>
+  <line x1="7" y1="16" x2="13" y2="16" stroke="#888899" stroke-width="1.2" stroke-linecap="round"/>
+</svg>
+)svg";
+
 } // namespace SvgIcons
 
 // ── Helper: render an SVG string to a QPixmap at the given pixel size ─────────

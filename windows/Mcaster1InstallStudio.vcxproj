@@ -1,0 +1,273 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Mcaster1InstallStudio.vcxproj — VS2022 project for the Mcaster1 Install Studio IDE
+  ─────────────────────────────────────────────────────────────────────────────
+  Target:    Mcaster1InstallStudio.exe
+  Platform:  x64 | MSVC v143 (VS2022)
+  Qt6:       Widgets + Svg + SvgWidgets + Concurrent  (see props\Qt6.props)
+
+  Prerequisites:
+    1. Visual Studio 2022 (any edition) with "Desktop development with C++" workload
+    2. Qt6 installed at C:\Qt (auto-detected) OR set QT_MSVC_DIR env var
+    3. Qt Visual Studio Tools extension (recommended — handles MOC automatically)
+       Install via: Extensions > Manage Extensions > search "Qt Visual Studio Tools"
+       Without extension: moc_*.cpp files must be generated manually (see below)
+
+  Build:
+    Open Mcaster1InstallSystem.sln in VS2022 → Build > Build Solution (F7)
+    Or from Developer Command Prompt:
+      msbuild windows\Mcaster1InstallStudio.vcxproj /p:Configuration=Debug /p:Platform=x64
+
+  After build, run windeployqt to copy Qt DLLs:
+    C:\Qt\<ver>\msvc2022_64\bin\windeployqt.exe x64\Debug\Mcaster1InstallStudio.exe
+  ─────────────────────────────────────────────────────────────────────────────
+-->
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <!-- ── Project configurations ──────────────────────────────────────────── -->
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+
+  <!-- ── Global properties ────────────────────────────────────────────────── -->
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{A4B5C6D7-E8F9-0A1B-2C3D-4E5F60718293}</ProjectGuid>
+    <RootNamespace>Mcaster1InstallStudio</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <Keyword>Qt6Proj</Keyword>
+    <!-- Qt VS Tools: name of the registered Qt version (Tools > Qt Options) -->
+    <QtInstall>msvc2022_64</QtInstall>
+    <!-- Qt VS Tools: modules to link -->
+    <QtModules>core;gui;widgets;svg;svgwidgets;concurrent</QtModules>
+  </PropertyGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+
+  <!-- ── Configuration properties ─────────────────────────────────────────── -->
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+  </PropertyGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+
+  <!-- ── Qt VS Tools integration (requires Qt VS Tools extension) ───────── -->
+  <!--
+    If Qt VS Tools is installed, $(QtMsBuild) resolves to the extension's MSBuild dir.
+    If not installed, these imports are silently skipped (Condition guards them).
+  -->
+  <ImportGroup Label="ExtensionSettings">
+    <Import Project="$(QtMsBuild)\qt_defaults.props"
+            Condition="Exists('$(QtMsBuild)\qt_defaults.props')" />
+  </ImportGroup>
+
+  <!-- ── Shared property sheets ────────────────────────────────────────────── -->
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props"
+            Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')"
+            Label="LocalAppDataPlatform" />
+    <Import Project="$(MSBuildThisFileDirectory)props\Qt6.props" />
+    <Import Project="$(MSBuildThisFileDirectory)props\Common.props" />
+  </ImportGroup>
+
+  <!-- ── Output directories ────────────────────────────────────────────────── -->
+  <PropertyGroup>
+    <OutDir>$(MSBuildThisFileDirectory)$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(MSBuildThisFileDirectory)$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
+  </PropertyGroup>
+
+  <!-- ── Compiler: additional include dirs (project-specific) ─────────────── -->
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>
+        $(MSBuildThisFileDirectory)..\studio;
+        $(MSBuildThisFileDirectory)..\manifest;
+        $(MSBuildThisFileDirectory)..\backends;
+        $(MSBuildThisFileDirectory)..\importers;
+        %(AdditionalIncludeDirectories)
+      </AdditionalIncludeDirectories>
+      <!-- WIN32_IS_STUDIO: allows backend code to skip macOS-only checks -->
+      <PreprocessorDefinitions>WIN32_IS_STUDIO;%(PreprocessorDefinitions)</PreprocessorDefinitions>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
+    </Link>
+  </ItemDefinitionGroup>
+
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+  <!-- SOURCE FILES                                                           -->
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+
+  <!-- ── Studio IDE sources ───────────────────────────────────────────────── -->
+  <ItemGroup Label="StudioSources">
+    <ClCompile Include="..\studio\main.cpp" />
+    <ClCompile Include="..\studio\StudioMainWindow.cpp" />
+    <ClCompile Include="..\studio\ProjectSidebar.cpp" />
+    <ClCompile Include="..\studio\AppInfoEditor.cpp" />
+    <ClCompile Include="..\studio\FilesEditor.cpp" />
+    <ClCompile Include="..\studio\ComponentsEditor.cpp" />
+    <ClCompile Include="..\studio\ShortcutsEditor.cpp" />
+    <ClCompile Include="..\studio\RegistryEditor.cpp" />
+    <ClCompile Include="..\studio\SecurityEditor.cpp" />
+    <ClCompile Include="..\studio\PrerequisitesEditor.cpp" />
+    <ClCompile Include="..\studio\CustomActionsEditor.cpp" />
+    <ClCompile Include="..\studio\BuildPanel.cpp" />
+    <ClCompile Include="..\studio\CodeSignDialog.cpp" />
+    <ClCompile Include="..\studio\BuilderProfileDialog.cpp" />
+  </ItemGroup>
+
+  <!-- ── Manifest library (compiled inline) ────────────────────────────────── -->
+  <ItemGroup Label="ManifestSources">
+    <ClCompile Include="..\manifest\Manifest.cpp" />
+  </ItemGroup>
+
+  <!-- ── Importer sources ─────────────────────────────────────────────────── -->
+  <ItemGroup Label="ImporterSources">
+    <ClCompile Include="..\importers\NsisImporter.cpp" />
+    <ClCompile Include="..\importers\InnoSetupImporter.cpp" />
+  </ItemGroup>
+
+  <!-- ── Backend sources (Windows only — macOS/Linux backends excluded) ───── -->
+  <ItemGroup Label="BackendSources">
+    <ClCompile Include="..\backends\WindowsBackend.cpp" />
+    <ClCompile Include="..\backends\CodeSigner.cpp" />
+    <ClCompile Include="..\backends\CertGenerator.cpp" />
+    <!-- macOS and Linux backends: excluded from Windows builds -->
+    <ClCompile Include="..\backends\MacOsBackend.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+    <ClCompile Include="..\backends\LinuxBackend.cpp">
+      <ExcludedFromBuild>true</ExcludedFromBuild>
+    </ClCompile>
+  </ItemGroup>
+
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+  <!-- HEADER FILES (with Q_OBJECT — must be processed by MOC)               -->
+  <!-- Qt VS Tools: listed as <QtMoc> items → extension auto-runs moc.exe    -->
+  <!-- Without Qt VS Tools: run moc.exe manually (see manual-moc target)     -->
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+
+  <ItemGroup Label="QtMocHeaders" Condition="Exists('$(QtMsBuild)\qt.targets')">
+    <!-- Studio windows / dialogs -->
+    <QtMoc Include="..\studio\StudioMainWindow.h" />
+    <QtMoc Include="..\studio\ProjectSidebar.h" />
+    <QtMoc Include="..\studio\AppInfoEditor.h" />
+    <QtMoc Include="..\studio\FilesEditor.h" />
+    <QtMoc Include="..\studio\ComponentsEditor.h" />
+    <QtMoc Include="..\studio\ShortcutsEditor.h" />
+    <QtMoc Include="..\studio\RegistryEditor.h" />
+    <QtMoc Include="..\studio\SecurityEditor.h" />
+    <QtMoc Include="..\studio\PrerequisitesEditor.h" />
+    <QtMoc Include="..\studio\CustomActionsEditor.h" />
+    <QtMoc Include="..\studio\BuildPanel.h" />
+    <QtMoc Include="..\studio\CodeSignDialog.h" />
+    <QtMoc Include="..\studio\BuilderProfileDialog.h" />
+    <!-- Header-only widgets (EventLog, BuildHistory contain Q_OBJECT) -->
+    <QtMoc Include="..\studio\EventLog.h" />
+    <QtMoc Include="..\studio\BuildHistory.h" />
+  </ItemGroup>
+
+  <!--
+    ── Manual MOC fallback (WITHOUT Qt VS Tools) ───────────────────────────
+    If Qt VS Tools is NOT installed, generate moc_*.cpp files before building:
+
+    PowerShell (run from project root, adjust Qt version):
+      $moc = "C:\Qt\6.8.1\msvc2022_64\bin\moc.exe"
+      $out = "windows\moc_generated"
+      New-Item -ItemType Directory -Force -Path $out | Out-Null
+      @(
+        "studio\StudioMainWindow.h",
+        "studio\ProjectSidebar.h",
+        "studio\AppInfoEditor.h",
+        "studio\FilesEditor.h",
+        "studio\ComponentsEditor.h",
+        "studio\ShortcutsEditor.h",
+        "studio\RegistryEditor.h",
+        "studio\SecurityEditor.h",
+        "studio\PrerequisitesEditor.h",
+        "studio\CustomActionsEditor.h",
+        "studio\BuildPanel.h",
+        "studio\CodeSignDialog.h",
+        "studio\BuilderProfileDialog.h",
+        "studio\EventLog.h",
+        "studio\BuildHistory.h"
+      ) | ForEach-Object {
+        $base = [System.IO.Path]::GetFileNameWithoutExtension($_)
+        & $moc $_ -o "$out\moc_$base.cpp"
+        Write-Host "moc: $_ -> $out\moc_$base.cpp"
+      }
+
+    Then add the generated files to a <ClCompile> group in this project or
+    include the moc_generated\ dir in AdditionalIncludeDirectories.
+  -->
+
+  <!-- ── All other header files (non-MOC) ─────────────────────────────────── -->
+  <ItemGroup Label="Headers">
+    <ClInclude Include="..\studio\StudioStyle.h" />
+    <ClInclude Include="..\studio\SvgIcons.h" />
+    <ClInclude Include="..\studio\BuilderProfile.h" />
+    <ClInclude Include="..\manifest\Manifest.h" />
+    <ClInclude Include="..\backends\BuildBackend.h" />
+    <ClInclude Include="..\backends\WindowsBackend.h" />
+    <ClInclude Include="..\backends\CodeSigner.h" />
+    <ClInclude Include="..\backends\CertGenerator.h" />
+    <ClInclude Include="..\importers\NsisImporter.h" />
+    <ClInclude Include="..\importers\InnoSetupImporter.h" />
+  </ItemGroup>
+
+  <!-- ── Windows application manifest (UAC + DPI awareness) ───────────────── -->
+  <ItemGroup Label="AppManifest">
+    <Manifest Include="$(MSBuildThisFileDirectory)res\Mcaster1InstallStudio.manifest">
+      <SubType>Designer</SubType>
+    </Manifest>
+  </ItemGroup>
+
+  <!-- ── Windows resource file (.rc) ──────────────────────────────────────── -->
+  <ItemGroup Label="Resources">
+    <ResourceCompile Include="$(MSBuildThisFileDirectory)res\Mcaster1InstallStudio.rc" />
+  </ItemGroup>
+
+  <!-- ── Filters file reference (for Solution Explorer folder grouping) ───── -->
+  <!-- See Mcaster1InstallStudio.vcxproj.filters (auto-generated by VS) -->
+
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+  <!-- TARGETS IMPORT                                                         -->
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+
+  <!-- Qt VS Tools targets (handles MOC/RCC/UIC automatically when extension present) -->
+  <ImportGroup Label="ExtensionTargets">
+    <Import Project="$(QtMsBuild)\qt.targets"
+            Condition="Exists('$(QtMsBuild)\qt.targets')" />
+  </ImportGroup>
+
+  <!-- ── Post-build: copy Qt DLLs to output dir (development convenience) ── -->
+  <!--
+    For a full deployment, use windeployqt instead:
+      C:\Qt\<ver>\msvc2022_64\bin\windeployqt.exe $(OutDir)Mcaster1InstallStudio.exe
+  -->
+  <Target Name="WinDeployQt" AfterTargets="Build"
+          Condition="'$(RunWinDeployQt)'=='true' AND '$(Qt6Dir)' != ''">
+    <Exec Command="&quot;$(Qt6Dir)\bin\windeployqt.exe&quot; &quot;$(OutDir)$(TargetName)$(TargetExt)&quot;"
+          ConsoleToMsBuild="true"
+          ContinueOnError="true" />
+  </Target>
+
+</Project>

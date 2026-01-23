@@ -1,0 +1,165 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# AcmeWidgets.mis  — Mcaster1 Install System example project
+#
+# Demonstrates a complete, cross-platform installer manifest for a fictional
+# "Acme Widgets 2.1.0" application targeting macOS, Windows and Linux.
+#
+# Build commands (from this directory):
+#   macOS .pkg     : ./build-macos-pkg.sh
+#   Linux .deb     : ./build-linux-deb.sh
+#   Windows NSIS   : miscc --build-file=AcmeWidgets.mis --platform=windows
+#   All platforms  : miscc --build-file=AcmeWidgets.mis --no-sign
+#   Validate only  : miscc --build-file=AcmeWidgets.mis --dry-run
+# ──────────────────────────────────────────────────────────────────────────────
+
+format: mis/1
+
+# ── Application metadata ──────────────────────────────────────────────────────
+app:
+  name:        "Acme Widgets"
+  version:     "2.1.0"
+  publisher:   "ACME Corporation"
+  description: "A cross-platform widget toolkit for managing and deploying ACME products."
+  url:         "https://www.acme-corp.example.com/widgets"
+  support-url: "https://support.acme-corp.example.com"
+  identifier:  "com.acme-corp.acme-widgets"
+  icon:        "resources/acme-widgets.icns"
+  license:     "LICENSE.txt"
+
+# ── Default install directories (tokens: {name} {publisher} {version}) ────────
+defaults:
+  install-dir:
+    macos:   "/Applications/ACME Widgets"
+    windows: "C:\\Program Files\\ACME Corporation\\Acme Widgets"
+    linux:   "/opt/acme-widgets"
+  require-admin:      true
+  allow-custom-dir:   true
+  launch-after:       true
+  create-uninstaller: true
+
+# ── Installer wizard theme ────────────────────────────────────────────────────
+theme:
+  banner-image:    "resources/banner.png"
+  sidepanel-image: "resources/sidepanel.png"
+  accent-color:    "#0078d4"
+  background:      "#1e1e2e"
+  dark-mode: true
+
+# ── Application groups ────────────────────────────────────────────────────────
+app-groups:
+  - id:          core-app
+    name:        "Acme Widgets Application"
+    description: "Main application binaries and runtime."
+  - id:          documentation
+    name:        "Documentation"
+    description: "User guides, API reference and release notes."
+  - id:          samples
+    name:        "Sample Projects"
+    description: "Example widget configurations and demo data."
+
+# ── Prerequisites ─────────────────────────────────────────────────────────────
+prerequisites:
+  - id: bash
+    name: "Bash shell (4.0+)"
+    check: "bash --version | grep -q 'version [456789]'"
+    install: "brew install bash"
+    platforms: [macos]
+  - id: libc6
+    name: "GNU C Library (glibc 2.17+)"
+    check: "ldd --version 2>&1 | grep -q 'GLIBC'"
+    install: "sudo apt-get install libc6"
+    platforms: [linux]
+
+# ── Components ────────────────────────────────────────────────────────────────
+components:
+  - id:          core
+    name:        "Core Application (required)"
+    description: "The main acme-widgets binary, default configuration and shared data files."
+    required:    true
+    selected:    true
+    app-group:   core-app
+    files:
+      - src: bin/acme-widgets
+        dst: "{install-dir}/bin/acme-widgets"
+        chmod: "+x"
+        platforms: [macos, linux]
+      - src: bin/acme-widgets.bat
+        dst: "{install-dir}/bin/acme-widgets.bat"
+        platforms: [windows]
+      - src: etc/acme-widgets.conf
+        dst: "{install-dir}/etc/acme-widgets.conf"
+
+  - id:          docs
+    name:        "Documentation"
+    description: "HTML user guide, API reference and release notes."
+    required:    false
+    selected:    true
+    app-group:   documentation
+    depends:     [core]
+    files:
+      - src: share/acme-widgets/README.txt
+        dst: "{install-dir}/share/acme-widgets/README.txt"
+      - src: share/acme-widgets/CHANGELOG.txt
+        dst: "{install-dir}/share/acme-widgets/CHANGELOG.txt"
+
+  - id:          samples
+    name:        "Sample Projects"
+    description: "Pre-built widget configurations and example data for learning."
+    required:    false
+    selected:    false
+    app-group:   samples
+    depends:     [core]
+    files:
+      - src: share/acme-widgets/sample.dat
+        dst: "{install-dir}/share/acme-widgets/sample.dat"
+
+# ── Shortcuts ─────────────────────────────────────────────────────────────────
+shortcuts:
+  - name:   "Acme Widgets"
+    target: "{install-dir}/bin/acme-widgets"
+    type:   app
+  - name:   "Acme Widgets Documentation"
+    target: "{install-dir}/share/acme-widgets/README.txt"
+    type:   url
+
+# ── Windows Registry entries ──────────────────────────────────────────────────
+registry:
+  - hive:  HKLM
+    key:   "Software\\ACME Corporation\\Acme Widgets"
+    value: "InstallPath"
+    data:  "{install-dir}"
+    type:  REG_SZ
+  - hive:  HKLM
+    key:   "Software\\ACME Corporation\\Acme Widgets"
+    value: "Version"
+    data:  "2.1.0"
+    type:  REG_SZ
+  - hive:  HKCU
+    key:   "Software\\ACME Corporation\\Acme Widgets\\Preferences"
+    value: "FirstRun"
+    data:  "1"
+    type:  REG_DWORD
+
+# ── Custom actions ────────────────────────────────────────────────────────────
+custom-actions:
+  - id:      update-ldconfig
+    trigger: after-install
+    type:    shell
+    command: "ldconfig 2>/dev/null || true"
+    platforms: [linux]
+  - id:      create-logdir
+    trigger: after-install
+    type:    shell
+    command: "mkdir -p /var/log/acme-widgets && chmod 755 /var/log/acme-widgets"
+    platforms: [linux]
+  - id:      notify-install-complete
+    trigger: after-install
+    type:    shell
+    command: "osascript -e 'display notification \"Acme Widgets 2.1.0 installed.\" with title \"Installation Complete\"' 2>/dev/null || true"
+    platforms: [macos]
+
+# ── Target platforms ──────────────────────────────────────────────────────────
+targets:
+  - macos
+  - windows
+  - linux

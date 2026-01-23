@@ -17,8 +17,13 @@ public:
     explicit SecurityEditor(QWidget *parent = nullptr);
     void load(const Manifest &m);
     void save(Manifest &m) const;
+
+private slots:
+    void onManageCodeSigning();
+
 private:
     void buildUi();
+    Manifest m_manifest;  // retained to pass into CodeSignDialog
 
     // macOS signing
     QLineEdit *m_macosIdentity  = nullptr;

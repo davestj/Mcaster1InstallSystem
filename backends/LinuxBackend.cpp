@@ -1,15 +1,37 @@
 #include "LinuxBackend.h"
 
 #include <QDir>
+#include <QDirIterator>
 #include <QFile>
 #include <QTextStream>
 #include <QProcess>
 #include <QFileInfo>
 
+// Sum all file sizes under a directory recursively, in kibibytes (dpkg convention)
+static qint64 payloadSizeKiB(const QString &dir)
+{
+    qint64 total = 0;
+    QDirIterator it(dir, QDir::Files | QDir::Hidden, QDirIterator::Subdirectories);
+    while (it.hasNext()) {
+        it.next();
+        total += it.fileInfo().size();
+    }
+    return (total + 1023) / 1024;  // round up to nearest KiB
+}
+
 QStringList LinuxBackend::validate(const Manifest &m, const QString &projectDir) const
 {
+    QStringList issues = m.validate();
+
+    // Warn if dpkg-deb is unavailable (build will still produce the stage tree)
+    QProcess which;
+    which.start("which", {"dpkg-deb"});
+    which.waitForFinished(3000);
+    if (which.exitCode() != 0)
+        issues << "WARNING: dpkg-deb not found — .deb will not be compiled (stage tree only).";
+
     Q_UNUSED(projectDir)
-    return m.validate();
+    return issues;
 }
 
 QString LinuxBackend::outputFilename(const Manifest &m) const
@@ -42,7 +64,9 @@ bool LinuxBackend::build(const Manifest   &m,
         if (errOut) *errOut = "Cannot write DEBIAN/control";
         return false;
     }
-    ctrlFile.write(generateDebControl(m).toUtf8());
+    // Pass the payload destination path so Installed-Size reflects real content
+    QString installDir = m.defaultInstallDir("linux");
+    ctrlFile.write(generateDebControl(m, stageDir + installDir).toUtf8());
     ctrlFile.close();
 
     // Write postinst script
@@ -54,7 +78,6 @@ bool LinuxBackend::build(const Manifest   &m,
 
     // ── Copy payload files ────────────────────────────────────────────────────
     report(progress, 35, "[2/3] Copying payload...");
-    QString installDir = m.defaultInstallDir("linux");
     QString dstBase    = stageDir + installDir;
     QDir().mkpath(dstBase);
 
@@ -91,7 +114,8 @@ bool LinuxBackend::build(const Manifest   &m,
     return true;
 }
 
-QString LinuxBackend::generateDebControl(const Manifest &m) const
+QString LinuxBackend::generateDebControl(const Manifest &m,
+                                          const QString   &payloadPath) const
 {
     QString s;
     QTextStream ts(&s);
@@ -99,13 +123,17 @@ QString LinuxBackend::generateDebControl(const Manifest &m) const
     ts << "Version: "      << m.app.version << "\n";
     ts << "Architecture: " << "amd64\n";
     ts << "Maintainer: "   << m.app.publisher << "\n";
-    ts << "Description: "  << m.app.description << "\n";
+    ts << "Description: "  << (m.app.description.isEmpty()
+                                ? m.app.name
+                                : m.app.description.split('\n').first()) << "\n";
+    if (!m.app.url.isEmpty())
     ts << "Homepage: "     << m.app.url << "\n";
     ts << "Priority: optional\n";
     ts << "Section: misc\n";
 
-    qint64 installedSize = 0;  // TODO: calculate from payload
-    ts << "Installed-Size: " << installedSize << "\n";
+    // Installed-Size in KiB — use the actual staged payload directory
+    const qint64 installedSize = payloadSizeKiB(payloadPath);
+    ts << "Installed-Size: " << (installedSize > 0 ? installedSize : 1024) << "\n";
     return s;
 }
 

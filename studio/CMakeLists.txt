@@ -4,6 +4,7 @@ project(Mcaster1InstallStudio VERSION 1.0.0 LANGUAGES CXX)
 # ── C++ standard ─────────────────────────────────────────────────────────────
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
+set(CMAKE_EXPORT_COMPILE_COMMANDS ON)  # enables clangd / IDE IntelliSense
 
 # ── Qt6 setup ─────────────────────────────────────────────────────────────────
 set(CMAKE_AUTOMOC ON)
@@ -24,6 +25,11 @@ set(STUDIO_SOURCES
     ShortcutsEditor.cpp
     RegistryEditor.cpp
     SecurityEditor.cpp
+    PrerequisitesEditor.cpp
+    CustomActionsEditor.cpp
+    BuilderProfileDialog.cpp
+    CodeSignDialog.cpp
+    HelpPanel.cpp
 
     # Manifest library (compiled inline — no separate lib target)
     ${CMAKE_CURRENT_SOURCE_DIR}/../manifest/Manifest.cpp
@@ -32,10 +38,12 @@ set(STUDIO_SOURCES
     ${CMAKE_CURRENT_SOURCE_DIR}/../importers/NsisImporter.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../importers/InnoSetupImporter.cpp
 
-    # Backends
+    # Backends (including code signing + cert generation)
     ${CMAKE_CURRENT_SOURCE_DIR}/../backends/MacOsBackend.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../backends/WindowsBackend.cpp
     ${CMAKE_CURRENT_SOURCE_DIR}/../backends/LinuxBackend.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../backends/CodeSigner.cpp
+    ${CMAKE_CURRENT_SOURCE_DIR}/../backends/CertGenerator.cpp
 )
 
 set(STUDIO_HEADERS
@@ -57,6 +65,14 @@ set(STUDIO_HEADERS
     ${CMAKE_CURRENT_SOURCE_DIR}/../backends/LinuxBackend.h
     ${CMAKE_CURRENT_SOURCE_DIR}/../importers/NsisImporter.h
     ${CMAKE_CURRENT_SOURCE_DIR}/../importers/InnoSetupImporter.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/../backends/CodeSigner.h
+    ${CMAKE_CURRENT_SOURCE_DIR}/../backends/CertGenerator.h
+    CodeSignDialog.h
+    HelpPanel.h
+    BuilderProfile.h
+    BuilderProfileDialog.h
+    EventLog.h
+    BuildHistory.h
 )
 
 # ── Include dirs ──────────────────────────────────────────────────────────────
@@ -69,13 +85,56 @@ include_directories(
 
 # ── macOS app bundle ──────────────────────────────────────────────────────────
 if(APPLE)
-    set(APP_ICON ${CMAKE_CURRENT_SOURCE_DIR}/../resources/icons/mcaster1.icns)
-    set_source_files_properties(${APP_ICON} PROPERTIES MACOSX_PACKAGE_LOCATION Resources)
+    # ── SVG → icns pipeline ──────────────────────────────────────────────────
+    # Requires: rsvg-convert (brew install librsvg) + iconutil (macOS built-in)
+    # If rsvg-convert is not found, falls back to the pre-built mcaster1.icns.
+    find_program(RSVG_CONVERT rsvg-convert
+        HINTS /opt/homebrew/bin /usr/local/bin)
+    find_program(ICONUTIL iconutil)
+
+    set(SVG_ICON    ${CMAKE_CURRENT_SOURCE_DIR}/../resources/icons/mcaster1.svg)
+    set(ICNS_STATIC ${CMAKE_CURRENT_SOURCE_DIR}/../resources/icons/mcaster1.icns)
+
+    if(RSVG_CONVERT AND ICONUTIL AND EXISTS "${SVG_ICON}")
+        set(ICONSET_DIR ${CMAKE_CURRENT_BINARY_DIR}/mcaster1.iconset)
+        set(APP_ICON    ${CMAKE_CURRENT_BINARY_DIR}/mcaster1.icns)
+
+        # Standard Apple iconset sizes: 16 32 64 128 256 512 and @2x variants
+        add_custom_command(
+            OUTPUT  "${APP_ICON}"
+            COMMAND ${CMAKE_COMMAND} -E make_directory "${ICONSET_DIR}"
+            COMMAND ${RSVG_CONVERT} -w 16   -h 16   "${SVG_ICON}" -o "${ICONSET_DIR}/icon_16x16.png"
+            COMMAND ${RSVG_CONVERT} -w 32   -h 32   "${SVG_ICON}" -o "${ICONSET_DIR}/icon_16x16@2x.png"
+            COMMAND ${RSVG_CONVERT} -w 32   -h 32   "${SVG_ICON}" -o "${ICONSET_DIR}/icon_32x32.png"
+            COMMAND ${RSVG_CONVERT} -w 64   -h 64   "${SVG_ICON}" -o "${ICONSET_DIR}/icon_32x32@2x.png"
+            COMMAND ${RSVG_CONVERT} -w 128  -h 128  "${SVG_ICON}" -o "${ICONSET_DIR}/icon_128x128.png"
+            COMMAND ${RSVG_CONVERT} -w 256  -h 256  "${SVG_ICON}" -o "${ICONSET_DIR}/icon_128x128@2x.png"
+            COMMAND ${RSVG_CONVERT} -w 256  -h 256  "${SVG_ICON}" -o "${ICONSET_DIR}/icon_256x256.png"
+            COMMAND ${RSVG_CONVERT} -w 512  -h 512  "${SVG_ICON}" -o "${ICONSET_DIR}/icon_256x256@2x.png"
+            COMMAND ${RSVG_CONVERT} -w 512  -h 512  "${SVG_ICON}" -o "${ICONSET_DIR}/icon_512x512.png"
+            COMMAND ${RSVG_CONVERT} -w 1024 -h 1024 "${SVG_ICON}" -o "${ICONSET_DIR}/icon_512x512@2x.png"
+            COMMAND ${ICONUTIL} -c icns -o "${APP_ICON}" "${ICONSET_DIR}"
+            DEPENDS "${SVG_ICON}"
+            COMMENT "Generating mcaster1.icns from SVG (Studio)"
+        )
+        set(ICNS_GENERATED TRUE)
+        message(STATUS "Studio: SVG → icns pipeline active (${RSVG_CONVERT})")
+    else()
+        set(APP_ICON       ${ICNS_STATIC})
+        set(ICNS_GENERATED FALSE)
+        if(NOT RSVG_CONVERT)
+            message(STATUS "Studio: rsvg-convert not found — using static mcaster1.icns "
+                           "(run: brew install librsvg  to enable SVG→icns generation)")
+        endif()
+    endif()
+
+    set_source_files_properties("${APP_ICON}" PROPERTIES
+        MACOSX_PACKAGE_LOCATION Resources)
 
     add_executable(Mcaster1InstallStudio MACOSX_BUNDLE
         ${STUDIO_SOURCES}
         ${STUDIO_HEADERS}
-        ${APP_ICON}
+        "${APP_ICON}"
     )
 
     set_target_properties(Mcaster1InstallStudio PROPERTIES
@@ -106,6 +165,17 @@ if(MSVC)
     target_compile_options(Mcaster1InstallStudio PRIVATE /W3)
 else()
     target_compile_options(Mcaster1InstallStudio PRIVATE -Wall -Wextra -Wno-unused-parameter)
+endif()
+
+# ── Copy docs into app bundle (macOS) ────────────────────────────────────────
+if(APPLE)
+    set(DOCS_SRC ${CMAKE_CURRENT_SOURCE_DIR}/../docs)
+    set(DOCS_DST "$<TARGET_BUNDLE_CONTENT_DIR:Mcaster1InstallStudio>/Resources/docs")
+    add_custom_command(TARGET Mcaster1InstallStudio POST_BUILD
+        COMMAND ${CMAKE_COMMAND} -E make_directory "${DOCS_DST}"
+        COMMAND ${CMAKE_COMMAND} -E copy_directory "${DOCS_SRC}" "${DOCS_DST}"
+        COMMENT "Copying docs/ into app bundle Resources/docs/"
+    )
 endif()
 
 # ── Install ───────────────────────────────────────────────────────────────────

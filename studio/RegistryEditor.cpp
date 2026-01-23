@@ -9,7 +9,74 @@
 #include <QTableWidgetItem>
 #include <QHeaderView>
 #include <QPushButton>
+#include <QComboBox>
+#include <QStyledItemDelegate>
+#include <QApplication>
+#include <QSvgRenderer>
+#include <QPainter>
+#include <QPixmap>
+#include <QIcon>
+#include "SvgIcons.h"
 
+static QIcon si(const char *svg, int sz = 16)
+{
+    QByteArray d(svg); QSvgRenderer r(d);
+    QPixmap px(sz, sz); px.fill(Qt::transparent);
+    QPainter p(&px); r.render(&p); return QIcon(px);
+}
+
+// ── Reusable QComboBox delegate ───────────────────────────────────────────────
+class ComboDelegate : public QStyledItemDelegate
+{
+public:
+    explicit ComboDelegate(QStringList items, QObject *parent = nullptr)
+        : QStyledItemDelegate(parent), m_items(std::move(items)) {}
+
+    QWidget *createEditor(QWidget *parent, const QStyleOptionViewItem &,
+                          const QModelIndex &) const override
+    {
+        auto *cb = new QComboBox(parent);
+        cb->addItems(m_items);
+        return cb;
+    }
+
+    void setEditorData(QWidget *editor, const QModelIndex &idx) const override
+    {
+        auto *cb = qobject_cast<QComboBox*>(editor);
+        if (!cb) return;
+        int i = cb->findText(idx.data(Qt::EditRole).toString());
+        cb->setCurrentIndex(i < 0 ? 0 : i);
+    }
+
+    void setModelData(QWidget *editor, QAbstractItemModel *model,
+                      const QModelIndex &idx) const override
+    {
+        auto *cb = qobject_cast<QComboBox*>(editor);
+        if (cb) model->setData(idx, cb->currentText(), Qt::EditRole);
+    }
+
+    void updateEditorGeometry(QWidget *editor, const QStyleOptionViewItem &opt,
+                              const QModelIndex &) const override
+    {
+        editor->setGeometry(opt.rect);
+    }
+
+    void paint(QPainter *painter, const QStyleOptionViewItem &opt,
+               const QModelIndex &idx) const override
+    {
+        QStyledItemDelegate::paint(painter, opt, idx);
+        QRect ar(opt.rect.right() - 14, opt.rect.top() + 2, 12, opt.rect.height() - 4);
+        QStyleOptionComboBox cbOpt;
+        cbOpt.rect  = ar;
+        cbOpt.state = opt.state;
+        QApplication::style()->drawPrimitive(QStyle::PE_IndicatorArrowDown, &cbOpt, painter);
+    }
+
+private:
+    QStringList m_items;
+};
+
+// ── Constructor ───────────────────────────────────────────────────────────────
 RegistryEditor::RegistryEditor(QWidget *parent)
     : QWidget(parent)
 {
@@ -37,11 +104,29 @@ RegistryEditor::RegistryEditor(QWidget *parent)
     m_table->horizontalHeader()->setSectionResizeMode(4, QHeaderView::ResizeToContents);
     m_table->verticalHeader()->setVisible(false);
     m_table->setSelectionBehavior(QAbstractItemView::SelectRows);
+    m_table->setToolTip(
+        "Hive       — HKLM (system-wide) or HKCU (current user)\n"
+        "Key        — registry path, e.g. SOFTWARE\\MyCompany\\MyApp\n"
+        "Value Name — leave blank for (Default) value\n"
+        "Data       — value data (use {install-dir} token for paths)\n"
+        "Type       — REG_SZ, REG_DWORD, REG_EXPAND_SZ, REG_BINARY, REG_MULTI_SZ");
+
+    // Hive column (0): HKLM / HKCU / HKCU_ALL
+    m_table->setItemDelegateForColumn(0,
+        new ComboDelegate({"HKLM", "HKCU", "HKCU_ALL"}, m_table));
+
+    // Type column (4): common registry value types
+    m_table->setItemDelegateForColumn(4,
+        new ComboDelegate({"REG_SZ", "REG_DWORD", "REG_EXPAND_SZ",
+                           "REG_BINARY", "REG_MULTI_SZ"}, m_table));
+
     vbox->addWidget(m_table, 1);
 
     auto *btns = new QHBoxLayout;
-    m_btnAdd = new QPushButton("+ Add Entry", this);
-    m_btnDel = new QPushButton("Remove",      this);
+    m_btnAdd = new QPushButton(si(SvgIcons::kNew),   "Add Entry", this);
+    m_btnDel = new QPushButton(si(SvgIcons::kTrash), "Remove",    this);
+    m_btnAdd->setToolTip("Add a new registry entry");
+    m_btnDel->setToolTip("Remove the selected registry entry");
     btns->addWidget(m_btnAdd);
     btns->addWidget(m_btnDel);
     btns->addStretch();
@@ -51,6 +136,7 @@ RegistryEditor::RegistryEditor(QWidget *parent)
     connect(m_btnDel, &QPushButton::clicked, this, &RegistryEditor::onRemove);
 }
 
+// ── Public ────────────────────────────────────────────────────────────────────
 void RegistryEditor::load(const Manifest &m)
 {
     m_table->setRowCount(0);
@@ -70,16 +156,17 @@ void RegistryEditor::save(Manifest &m) const
     m.registry.clear();
     for (int r = 0; r < m_table->rowCount(); ++r) {
         RegistryEntry re;
-        re.hive      = m_table->item(r,0) ? m_table->item(r,0)->text() : QString();
-        re.key       = m_table->item(r,1) ? m_table->item(r,1)->text() : QString();
-        re.valueName = m_table->item(r,2) ? m_table->item(r,2)->text() : QString();
-        re.valueData = m_table->item(r,3) ? m_table->item(r,3)->text() : QString();
-        re.valueType = m_table->item(r,4) ? m_table->item(r,4)->text() : QString();
+        re.hive      = m_table->item(r, 0) ? m_table->item(r, 0)->text() : "HKLM";
+        re.key       = m_table->item(r, 1) ? m_table->item(r, 1)->text() : QString();
+        re.valueName = m_table->item(r, 2) ? m_table->item(r, 2)->text() : QString();
+        re.valueData = m_table->item(r, 3) ? m_table->item(r, 3)->text() : QString();
+        re.valueType = m_table->item(r, 4) ? m_table->item(r, 4)->text() : "REG_SZ";
         if (!re.key.isEmpty())
             m.registry.append(re);
     }
 }
 
+// ── Private slots ─────────────────────────────────────────────────────────────
 void RegistryEditor::onAdd()
 {
     int row = m_table->rowCount();

@@ -1,0 +1,669 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Mcaster1 Install System — Help &amp; Documentation</title>
+<style>
+  :root {
+    --bg:     #1a1a2e;
+    --bg2:    #16213e;
+    --bg3:    #0f3460;
+    --accent: #00c9ff;
+    --fg:     #e0e0e8;
+    --fg2:    #a0a0b8;
+    --success:#4caf50;
+    --warn:   #ff9800;
+    --radius: 8px;
+    --font:   system-ui, -apple-system, sans-serif;
+    --mono:   "Menlo", "Consolas", monospace;
+  }
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body { background: var(--bg); color: var(--fg); font-family: var(--font); font-size: 14px; line-height: 1.7; }
+  a    { color: var(--accent); text-decoration: none; }
+  a:hover { text-decoration: underline; }
+  code { font-family: var(--mono); font-size: 12px; background: var(--bg3); padding: 2px 7px;
+         border-radius: 4px; color: var(--accent); }
+  pre  { background: var(--bg2); border: 1px solid var(--bg3); border-radius: var(--radius);
+         padding: 16px; overflow-x: auto; font-family: var(--mono); font-size: 12px;
+         color: var(--fg2); line-height: 1.6; margin: 12px 0; }
+
+  /* ── Layout ── */
+  .layout { display: flex; min-height: 100vh; }
+  nav {
+    width: 240px; min-width: 240px;
+    background: var(--bg2); border-right: 1px solid var(--bg3);
+    padding: 24px 0; position: sticky; top: 0; height: 100vh; overflow-y: auto;
+  }
+  .nav-logo { padding: 0 20px 20px; border-bottom: 1px solid var(--bg3); margin-bottom: 16px; }
+  .nav-logo h2 { font-size: 14px; color: var(--accent); font-weight: 700; }
+  .nav-logo p  { font-size: 11px; color: var(--fg2); margin-top: 2px; }
+  nav ul { list-style: none; }
+  nav li a {
+    display: block; padding: 7px 20px; color: var(--fg2); font-size: 13px;
+    transition: background 0.1s, color 0.1s;
+  }
+  nav li a:hover { background: var(--bg3); color: var(--fg); text-decoration: none; }
+  nav li a.active { color: var(--accent); border-right: 2px solid var(--accent); background: rgba(0,201,255,0.05); }
+  nav .nav-section { font-size: 11px; color: var(--fg2); padding: 12px 20px 4px;
+                     text-transform: uppercase; letter-spacing: 0.1em; font-weight: 600; }
+
+  main { flex: 1; padding: 40px 56px; max-width: 960px; }
+
+  /* ── Headings ── */
+  h1 { font-size: 26px; color: var(--accent); font-weight: 700; margin-bottom: 8px; }
+  h2 { font-size: 19px; color: var(--fg); font-weight: 700; margin: 36px 0 12px;
+       padding-bottom: 8px; border-bottom: 1px solid var(--bg3); }
+  h3 { font-size: 15px; color: var(--accent); font-weight: 600; margin: 24px 0 8px; }
+  h4 { font-size: 13px; color: var(--fg); font-weight: 600; margin: 16px 0 6px; }
+  p  { color: var(--fg2); margin-bottom: 10px; }
+  ul, ol { color: var(--fg2); padding-left: 22px; margin-bottom: 12px; }
+  li { margin-bottom: 4px; }
+  strong { color: var(--fg); }
+
+  /* ── Cards ── */
+  .card-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(200px, 1fr)); gap: 12px; margin: 16px 0; }
+  .card {
+    background: var(--bg2); border: 1px solid var(--bg3); border-radius: var(--radius);
+    padding: 16px; border-left: 3px solid var(--accent);
+  }
+  .card h4 { color: var(--accent); margin-top: 0; font-size: 13px; }
+  .card p  { font-size: 12px; margin: 0; }
+
+  /* ── Tables ── */
+  table { width: 100%; border-collapse: collapse; font-size: 13px; margin: 12px 0; }
+  th { background: var(--bg3); color: var(--accent); padding: 10px 14px; text-align: left; font-weight: 600; }
+  td { padding: 8px 14px; border-bottom: 1px solid var(--bg3); vertical-align: top; }
+  tr:nth-child(even) td { background: rgba(255,255,255,0.02); }
+
+  /* ── Callouts ── */
+  .callout {
+    border-radius: var(--radius); padding: 14px 18px; margin: 14px 0;
+    border-left: 4px solid var(--accent); background: rgba(0,201,255,0.07);
+  }
+  .callout.warn  { border-color: var(--warn);    background: rgba(255,152,0,0.07); }
+  .callout.tip   { border-color: var(--success);  background: rgba(76,175,80,0.07); }
+  .callout strong { color: var(--fg); }
+
+  /* ── Path hint boxes ── */
+  .path-hints { display: grid; grid-template-columns: 1fr 1fr 1fr; gap: 10px; margin: 14px 0; }
+  .path-hint { background: var(--bg2); border: 1px solid var(--bg3); border-radius: var(--radius); padding: 14px; }
+  .path-hint .os { font-size: 11px; font-weight: 700; color: var(--accent); text-transform: uppercase;
+                   letter-spacing: 0.08em; margin-bottom: 8px; }
+  .path-hint code { display: block; margin-bottom: 4px; font-size: 11px; }
+  .path-hint p { font-size: 11px; margin: 0; color: var(--fg2); }
+
+  footer { text-align: center; padding: 32px; color: var(--fg2); font-size: 12px;
+           border-top: 1px solid var(--bg3); margin-top: 40px; }
+
+  /* ── Section anchors ── */
+  section { scroll-margin-top: 24px; }
+</style>
+</head>
+<body>
+
+<div class="layout">
+
+<!-- ── Sidebar navigation ── -->
+<nav>
+  <div class="nav-logo">
+    <h2>Install System</h2>
+    <p>Help &amp; Documentation v1.0</p>
+  </div>
+  <ul>
+    <li class="nav-section">Getting Started</li>
+    <li><a href="#overview" class="active">Overview</a></li>
+    <li><a href="#quickstart">Quick Start</a></li>
+    <li><a href="#workflow">Typical Workflow</a></li>
+
+    <li class="nav-section">Studio Editors</li>
+    <li><a href="#app-info">App Info</a></li>
+    <li><a href="#files">Files &amp; Components</a></li>
+    <li><a href="#shortcuts">Shortcuts</a></li>
+    <li><a href="#registry">Registry</a></li>
+    <li><a href="#security">Security / Signing</a></li>
+    <li><a href="#prerequisites">Prerequisites</a></li>
+    <li><a href="#actions">Custom Actions</a></li>
+    <li><a href="#build">Building</a></li>
+
+    <li class="nav-section">Runtime Installer</li>
+    <li><a href="#runtime">Wizard Pages</a></li>
+    <li><a href="#install-dirs">Install Directories</a></li>
+
+    <li class="nav-section">File Format</li>
+    <li><a href="#mis-format">.mis File Format</a></li>
+    <li><a href="#tokens">Path Tokens</a></li>
+    <li><a href="#triggers">Trigger Reference</a></li>
+
+    <li class="nav-section">Reference</li>
+    <li><a href="#build-cmds">Build Commands</a></li>
+    <li><a href="PLANNING.html">Phase Tracker</a></li>
+  </ul>
+</nav>
+
+<!-- ── Main content ── -->
+<main>
+
+<!-- ── Overview ── -->
+<section id="overview">
+  <h1>Mcaster1 Install System</h1>
+  <p>A cross-platform installer authoring suite. Create professional installers for
+  macOS, Windows, and Linux from a single YAML project file — no scripting required.</p>
+
+  <div class="card-grid">
+    <div class="card"><h4>Mcaster1 Install Studio</h4>
+      <p>IDE for creating <code>.mis</code> installer spec files. 9-tab editor, build queue, code signing.</p></div>
+    <div class="card"><h4>Mcaster1 Installer</h4>
+      <p>Runtime wizard. Reads a <code>.mis</code> manifest and installs your application.</p></div>
+    <div class="card"><h4>.mis Files</h4>
+      <p>YAML installer spec. Describes app metadata, files, shortcuts, prerequisites, and more.</p></div>
+  </div>
+</section>
+
+<!-- ── Quick Start ── -->
+<section id="quickstart">
+  <h2>Quick Start</h2>
+  <ol>
+    <li>Launch <strong>Mcaster1 Install Studio</strong></li>
+    <li>Fill in <strong>App Info</strong> — name, version, publisher</li>
+    <li>Go to <strong>Files</strong> — add your payload files to the Core component</li>
+    <li>Select target platforms in <strong>Build</strong> — macOS, Windows, and/or Linux</li>
+    <li>Click <strong>Build Installer</strong></li>
+    <li>Click <strong>Test Installer</strong> to preview the wizard before distributing</li>
+  </ol>
+
+  <div class="callout tip">
+    <strong>Tip:</strong> Use <em>File → Import NSIS Script</em> or <em>Import Inno Setup Script</em>
+    to migrate an existing Windows installer in seconds.
+  </div>
+</section>
+
+<!-- ── Workflow ── -->
+<section id="workflow">
+  <h2>Typical Workflow</h2>
+  <ol>
+    <li><strong>New Project</strong> — File → New Project (⌘N)</li>
+    <li><strong>App Info</strong> — fill in all fields; set install directory defaults per platform</li>
+    <li><strong>Files</strong> — create components; drag in payload files; set destinations</li>
+    <li><strong>Prerequisites</strong> — add runtime requirements (.NET, Homebrew, etc.)</li>
+    <li><strong>Shortcuts</strong> — add macOS Dock / Windows Start Menu shortcuts</li>
+    <li><strong>Registry</strong> — (Windows only) add registry entries for app settings</li>
+    <li><strong>Security</strong> — configure code signing credentials</li>
+    <li><strong>Custom Actions</strong> — add post-install scripts if needed</li>
+    <li><strong>Build</strong> — pick platforms, choose output directory, click Build</li>
+    <li><strong>Test</strong> — click Test Installer to run the wizard locally</li>
+  </ol>
+</section>
+
+<!-- ── App Info ── -->
+<section id="app-info">
+  <h2>App Info Editor</h2>
+  <p>The App Info editor captures all metadata about your application.</p>
+
+  <table>
+    <thead><tr><th>Field</th><th>Description</th><th>Example</th></tr></thead>
+    <tbody>
+      <tr><td><strong>Name</strong></td><td>Display name of your application</td><td>My Application</td></tr>
+      <tr><td><strong>Version</strong></td><td>Semantic version number</td><td>1.2.0</td></tr>
+      <tr><td><strong>Publisher</strong></td><td>Company or developer name</td><td>ACME Corp</td></tr>
+      <tr><td><strong>Identifier</strong></td><td>Reverse-DNS bundle ID</td><td>com.acme.myapp</td></tr>
+      <tr><td><strong>Description</strong></td><td>Short description shown on Welcome page</td><td>A great app</td></tr>
+      <tr><td><strong>URL</strong></td><td>Product homepage</td><td>https://example.com</td></tr>
+      <tr><td><strong>Support URL</strong></td><td>Support / help link</td><td>https://example.com/support</td></tr>
+      <tr><td><strong>Icon</strong></td><td>Path to <code>.icns</code> / <code>.ico</code> file</td><td>resources/myapp.icns</td></tr>
+      <tr><td><strong>License File</strong></td><td>Path to license shown in wizard</td><td>payload/LICENSE.txt</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Install Directory Defaults</h3>
+  <p>Set the default install paths per platform. Users can change these at install time
+  unless <strong>Allow Custom Dir</strong> is unchecked. Use path tokens like <code>{name}</code>
+  and <code>{publisher}</code> to keep paths generic.</p>
+
+  <div class="path-hints">
+    <div class="path-hint">
+      <div class="os">macOS</div>
+      <code>/Applications/{Name}</code>
+      <code>~/Applications/{Name}</code>
+      <p>System-wide vs user-only. Avoid spaces in publisher names.</p>
+    </div>
+    <div class="path-hint">
+      <div class="os">Windows</div>
+      <code>C:\Program Files\{Publisher}\{Name}</code>
+      <code>C:\Program Files (x86)\...</code>
+      <p>64-bit vs 32-bit apps. Use <code>%APPDATA%\{Name}</code> for user-only.</p>
+    </div>
+    <div class="path-hint">
+      <div class="os">Linux</div>
+      <code>/opt/{publisher}</code>
+      <code>/usr/local</code>
+      <code>~/.local/share/{publisher}</code>
+      <p><code>/opt</code> for vendor software; <code>~/.local</code> for no-root installs.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ── Files ── -->
+<section id="files">
+  <h2>Files &amp; Components</h2>
+  <p>Organize your payload into <strong>components</strong>. Each component is an
+  independently selectable unit in the installer.</p>
+
+  <h3>File destination tokens</h3>
+  <table>
+    <thead><tr><th>Token</th><th>Resolves to</th></tr></thead>
+    <tbody>
+      <tr><td><code>{install-dir}</code></td><td>The install directory chosen by the user</td></tr>
+      <tr><td><code>{name}</code></td><td>App name from App Info</td></tr>
+      <tr><td><code>{publisher}</code></td><td>Publisher from App Info</td></tr>
+      <tr><td><code>{version}</code></td><td>Version from App Info</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Component flags</h3>
+  <ul>
+    <li><strong>Required</strong> — cannot be deselected by the user; always installed</li>
+    <li><strong>Selected by default</strong> — pre-checked in the wizard; user can uncheck</li>
+    <li><strong>Platforms</strong> — comma-separated list; leave empty to install on all platforms</li>
+    <li><strong>Depends</strong> — other component IDs that must be selected first</li>
+  </ul>
+
+  <div class="callout">
+    <strong>Best practice:</strong> Always have at least one <em>required</em> core component
+    containing the main application binary. Optional components (themes, templates, extras) should
+    be separate components.
+  </div>
+</section>
+
+<!-- ── Shortcuts ── -->
+<section id="shortcuts">
+  <h2>Shortcuts</h2>
+
+  <table>
+    <thead><tr><th>Type</th><th>Creates</th><th>Example target</th></tr></thead>
+    <tbody>
+      <tr><td><code>app</code></td><td>macOS Dock / Windows Start Menu / Linux .desktop</td><td><code>{install-dir}/MyApp.app</code></td></tr>
+      <tr><td><code>url</code></td><td>Web bookmark shortcut</td><td><code>https://example.com</code></td></tr>
+      <tr><td><code>webloc</code></td><td>macOS .webloc file</td><td><code>https://example.com</code></td></tr>
+      <tr><td><code>command</code></td><td>Shell/batch script shortcut</td><td><code>{install-dir}/run.sh</code></td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ── Registry ── -->
+<section id="registry">
+  <h2>Registry (Windows only)</h2>
+  <p>Add Windows registry entries written during installation. Common uses: storing
+  install path, registering file type associations, adding uninstall information.</p>
+
+  <table>
+    <thead><tr><th>Hive</th><th>Use for</th></tr></thead>
+    <tbody>
+      <tr><td><code>HKLM</code></td><td>Machine-wide settings (requires admin)</td></tr>
+      <tr><td><code>HKCU</code></td><td>Current user settings (no admin required)</td></tr>
+      <tr><td><code>HKCR</code></td><td>File type and COM class registration</td></tr>
+    </tbody>
+  </table>
+
+  <table>
+    <thead><tr><th>Value type</th><th>Use for</th></tr></thead>
+    <tbody>
+      <tr><td><code>REG_SZ</code></td><td>Plain text string (most common)</td></tr>
+      <tr><td><code>REG_DWORD</code></td><td>32-bit integer (flags, counts)</td></tr>
+      <tr><td><code>REG_EXPAND_SZ</code></td><td>String with environment variable expansion (<code>%PATH%</code>)</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ── Security ── -->
+<section id="security">
+  <h2>Security &amp; Code Signing</h2>
+
+  <h3>macOS</h3>
+  <ul>
+    <li><strong>Signer</strong> — "Developer ID Application: Your Name (TEAM_ID)" — from your Apple keychain</li>
+    <li><strong>Team ID</strong> — 10-character alphanumeric; found in developer.apple.com</li>
+    <li><strong>Hardened Runtime</strong> — required for notarization; enables security restrictions</li>
+    <li><strong>Notarize</strong> — submits to Apple's notarization service after signing</li>
+    <li><strong>Profile</strong> — <code>xcrun notarytool store-credentials</code> profile name</li>
+  </ul>
+
+  <h3>Windows</h3>
+  <ul>
+    <li><strong>PFX path</strong> — path to your Authenticode code-signing certificate (.pfx / .p12)</li>
+    <li><strong>Timestamp URL</strong> — e.g. <code>http://timestamp.sectigo.com</code> — ensures signature survives cert expiry</li>
+  </ul>
+
+  <h3>Linux</h3>
+  <ul>
+    <li><strong>GPG Key</strong> — key ID or fingerprint used to sign .deb packages</li>
+    <li><strong>Sign .deb packages</strong> — adds GPG signature to Debian package metadata</li>
+  </ul>
+
+  <div class="callout warn">
+    <strong>Important:</strong> Certificate passwords are <em>never</em> stored in the
+    <code>.mis</code> file. You will be prompted for them at sign time.
+  </div>
+</section>
+
+<!-- ── Prerequisites ── -->
+<section id="prerequisites">
+  <h2>Prerequisites</h2>
+  <p>Prerequisites are software requirements that are checked before installation begins.
+  The installer runs each check command and shows a pass/fail table to the user.</p>
+
+  <h3>Fields</h3>
+  <table>
+    <thead><tr><th>Field</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td><strong>ID</strong></td><td>Machine identifier, e.g. <code>dotnet48</code>, <code>vcredist2022</code></td></tr>
+      <tr><td><strong>Name</strong></td><td>Human-readable name shown in the wizard</td></tr>
+      <tr><td><strong>Check Command</strong></td><td>Shell command. Exit 0 = present. Non-zero = missing.</td></tr>
+      <tr><td><strong>Install Command</strong></td><td>URL or shell command shown to the user if missing.</td></tr>
+      <tr><td><strong>Platforms</strong></td><td>Comma-separated (macos, windows, linux). Empty = all.</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Check Command Examples</h3>
+  <pre># macOS: check for Homebrew
+which brew
+
+# Windows: check for .NET 4.8 registry key
+reg query "HKLM\SOFTWARE\Microsoft\NET Framework Setup\NDP\v4\Full" /v Release
+
+# Linux: check for an installed package
+dpkg -l libssl-dev | grep -q "^ii"
+
+# Universal: check for a binary on PATH
+which openssl</pre>
+
+  <div class="callout tip">
+    <strong>Advisory mode:</strong> The installer never blocks the user from proceeding, even if
+    prerequisites are missing. The check page is informational — it shows what's needed and
+    provides download links.
+  </div>
+</section>
+
+<!-- ── Custom Actions ── -->
+<section id="actions">
+  <h2>Custom Actions</h2>
+  <p>Custom actions are shell commands or scripts that run at specific points during installation.</p>
+
+  <h3>Trigger Points</h3>
+  <table>
+    <thead><tr><th>Trigger</th><th>When it runs</th></tr></thead>
+    <tbody>
+      <tr><td><code>before-install</code></td><td>Before any files are copied to the destination</td></tr>
+      <tr><td><code>after-install</code></td><td>After files are copied and shortcuts are created</td></tr>
+      <tr><td><code>before-uninstall</code></td><td>Before the uninstaller removes files</td></tr>
+      <tr><td><code>after-uninstall</code></td><td>After all installed files are removed</td></tr>
+    </tbody>
+  </table>
+
+  <h3>Action Types</h3>
+  <ul>
+    <li><strong>shell</strong> — a single shell command (run via <code>sh -c</code> / <code>cmd.exe /c</code>)</li>
+    <li><strong>script</strong> — path to a script file included in your payload</li>
+  </ul>
+
+  <h3>Examples</h3>
+  <pre># Set executable permissions after install (macOS/Linux)
+chmod +x "{install-dir}/MyApp.app/Contents/MacOS/myapp"
+
+# Create a data directory
+mkdir -p "{install-dir}/data"
+
+# Register a service (Windows)
+sc create MyService binPath= "{install-dir}\myservice.exe" start= auto</pre>
+
+  <div class="callout">
+    Use <code>{install-dir}</code> tokens in your commands — they resolve to the actual
+    installation path at runtime.
+  </div>
+</section>
+
+<!-- ── Build ── -->
+<section id="build">
+  <h2>Building Installers</h2>
+
+  <h3>Target platforms</h3>
+  <ul>
+    <li><strong>macOS (.dmg)</strong> — requires: Xcode Command Line Tools, <code>hdiutil</code></li>
+    <li><strong>Windows (.exe via NSIS)</strong> — requires: <code>makensis</code> (brew install makensis or nsis.sourceforge.io)</li>
+    <li><strong>Linux (.deb / AppImage)</strong> — requires: <code>dpkg-deb</code> (Linux) or <code>appimagetool</code></li>
+  </ul>
+
+  <h3>Build steps (automatic)</h3>
+  <ol>
+    <li>Manifest validated (required fields, at least one component)</li>
+    <li>Backend validated (tools present, paths correct)</li>
+    <li>Output directory created</li>
+    <li>Each selected platform built sequentially in a background thread</li>
+    <li>Build log shown in real time; progress bar advances per platform</li>
+  </ol>
+
+  <h3>Test Installer</h3>
+  <p>Click <strong>Test Installer</strong> to write the current manifest to a temporary directory
+  and launch <code>Mcaster1Installer.app</code> — useful for previewing the wizard UX before distributing.</p>
+</section>
+
+<!-- ── Runtime ── -->
+<section id="runtime">
+  <h2>Runtime Installer Wizard</h2>
+  <p>The <code>Mcaster1Installer.app</code> binary accepts a <code>.mis</code> file as its first
+  argument and presents a wizard to the end user.</p>
+
+  <table>
+    <thead><tr><th>Page</th><th>ID</th><th>Description</th></tr></thead>
+    <tbody>
+      <tr><td>Welcome</td><td>0</td><td>App name, version, description, publisher</td></tr>
+      <tr><td>License</td><td>1</td><td>License text; user must accept to proceed</td></tr>
+      <tr><td>Prerequisites</td><td>2</td><td>Check-command table; "Recheck All"; advisory (non-blocking)</td></tr>
+      <tr><td>Components</td><td>3</td><td>Optional component selection; required components pre-checked</td></tr>
+      <tr><td>Directory</td><td>4</td><td>Install directory picker with platform-appropriate defaults</td></tr>
+      <tr><td>Ready</td><td>5</td><td>Summary of app, directory, selected components</td></tr>
+      <tr><td>Installing</td><td>6</td><td>Progress bar; background file copy + shortcuts + registry</td></tr>
+      <tr><td>Finish</td><td>7</td><td>Success / failure; optional launch-app checkbox</td></tr>
+    </tbody>
+  </table>
+
+  <p>The <strong>Prerequisites page</strong> is only shown when the manifest contains at least
+  one prerequisite. All other pages are always shown.</p>
+</section>
+
+<!-- ── Install Directories ── -->
+<section id="install-dirs">
+  <h2>Install Directory Guide</h2>
+  <p>Choose installation paths that follow platform conventions. The runtime wizard shows
+  these as defaults that users can override.</p>
+
+  <h3>macOS</h3>
+  <div class="path-hints" style="grid-template-columns:1fr 1fr;">
+    <div class="path-hint">
+      <div class="os">System-wide (recommended)</div>
+      <code>/Applications/{Name}</code>
+      <code>/Applications/{Publisher}/{Name}</code>
+      <p>Requires admin. Visible to all users. Standard macOS convention.</p>
+    </div>
+    <div class="path-hint">
+      <div class="os">User-only (no admin)</div>
+      <code>~/Applications/{Name}</code>
+      <p>No admin required. Only visible to current user.</p>
+    </div>
+  </div>
+  <div class="callout tip">
+    <strong>macOS tip:</strong> Avoid spaces in publisher names when they appear in paths.
+    Use <code>{publisher}</code> tokens so the publisher name is always consistent.
+  </div>
+
+  <h3>Windows</h3>
+  <div class="path-hints" style="grid-template-columns:1fr 1fr 1fr;">
+    <div class="path-hint">
+      <div class="os">64-bit apps</div>
+      <code>C:\Program Files\{Publisher}\{Name}</code>
+      <p>Standard location. Requires admin.</p>
+    </div>
+    <div class="path-hint">
+      <div class="os">32-bit apps</div>
+      <code>C:\Program Files (x86)\{Publisher}\{Name}</code>
+      <p>WOW64 programs. Requires admin.</p>
+    </div>
+    <div class="path-hint">
+      <div class="os">User-only (no admin)</div>
+      <code>%LOCALAPPDATA%\{Publisher}\{Name}</code>
+      <code>%APPDATA%\{Publisher}\{Name}</code>
+      <p>No admin required. Use LOCALAPPDATA for local data; APPDATA for roaming.</p>
+    </div>
+  </div>
+  <div class="callout warn">
+    <strong>Windows tip:</strong> If your app writes to its install directory at runtime
+    (logs, config files), prefer <code>%APPDATA%</code> or <code>%LOCALAPPDATA%</code>
+    to avoid UAC elevation prompts on every write.
+  </div>
+
+  <h3>Linux</h3>
+  <div class="path-hints" style="grid-template-columns:1fr 1fr 1fr;">
+    <div class="path-hint">
+      <div class="os">Vendor software</div>
+      <code>/opt/{publisher}</code>
+      <code>/opt/{publisher}/{name}</code>
+      <p>FHS-compliant. Requires root. Ideal for proprietary apps.</p>
+    </div>
+    <div class="path-hint">
+      <div class="os">Local install</div>
+      <code>/usr/local</code>
+      <p>Manual installs. Binaries go in <code>/usr/local/bin</code>. Requires root.</p>
+    </div>
+    <div class="path-hint">
+      <div class="os">User-only (no root)</div>
+      <code>~/.local/share/{publisher}/{name}</code>
+      <p>XDG base directory spec. No root required. Add <code>~/.local/bin</code> to PATH.</p>
+    </div>
+  </div>
+</section>
+
+<!-- ── .mis Format ── -->
+<section id="mis-format">
+  <h2>.mis File Format</h2>
+  <p>Installer projects are stored as YAML <code>.mis</code> files.</p>
+  <pre>format: mis/1
+
+app:
+  name: "My Application"
+  version: "1.2.0"
+  publisher: "ACME Corp"
+  description: "A great application."
+  url: "https://example.com"
+  identifier: "com.acme.myapp"
+  icon: "resources/myapp.icns"
+  license-file: "payload/LICENSE.txt"
+
+defaults:
+  install-dir:
+    macos:   "/Applications/ACME"
+    windows: "C:\\Program Files\\ACME\\My Application"
+    linux:   "/opt/acme"
+  require-admin: true
+  allow-custom-dir: true
+  launch-after: true
+  create-uninstaller: true
+
+components:
+  - id: core
+    name: "Core Application"
+    required: true
+    files:
+      - src: "payload/MyApp.app"
+        dst: "{install-dir}/MyApp.app"
+
+prerequisites:
+  - id: homebrew
+    name: "Homebrew"
+    check-cmd: "which brew"
+    install-cmd: "https://brew.sh"
+    platforms: [macos]
+
+custom-actions:
+  - id: postinstall
+    trigger: after-install
+    type: shell
+    command: "chmod +x \"{install-dir}/MyApp.app/Contents/MacOS/myapp\""
+    platforms: [macos]
+
+targets:
+  - macos
+  - windows</pre>
+</section>
+
+<!-- ── Tokens ── -->
+<section id="tokens">
+  <h2>Path Tokens</h2>
+  <table>
+    <thead><tr><th>Token</th><th>Resolves to</th><th>Example</th></tr></thead>
+    <tbody>
+      <tr><td><code>{install-dir}</code></td><td>User-chosen install directory</td><td><code>/Applications/ACME</code></td></tr>
+      <tr><td><code>{name}</code></td><td><code>app.name</code></td><td><code>My Application</code></td></tr>
+      <tr><td><code>{publisher}</code></td><td><code>app.publisher</code></td><td><code>ACME Corp</code></td></tr>
+      <tr><td><code>{version}</code></td><td><code>app.version</code></td><td><code>1.2.0</code></td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ── Triggers ── -->
+<section id="triggers">
+  <h2>Custom Action Trigger Reference</h2>
+  <table>
+    <thead><tr><th>Trigger</th><th>When</th><th>Common uses</th></tr></thead>
+    <tbody>
+      <tr><td><code>before-install</code></td><td>Before file copy begins</td>
+          <td>Stop running processes, check disk space, create backup</td></tr>
+      <tr><td><code>after-install</code></td><td>After file copy + shortcuts + registry</td>
+          <td>Set permissions, initialize config, register service, launch app</td></tr>
+      <tr><td><code>before-uninstall</code></td><td>Before file removal</td>
+          <td>Stop service, export user data, close open files</td></tr>
+      <tr><td><code>after-uninstall</code></td><td>After all files removed</td>
+          <td>Remove residual config, clean up logs, deregister service</td></tr>
+    </tbody>
+  </table>
+</section>
+
+<!-- ── Build Commands ── -->
+<section id="build-cmds">
+  <h2>Build Commands (Developer Reference)</h2>
+  <h3>Studio IDE</h3>
+  <pre>cmake -B studio/build -S studio \
+  -DCMAKE_PREFIX_PATH=$(brew --prefix qt) \
+  -DCMAKE_BUILD_TYPE=Debug
+cmake --build studio/build -j$(sysctl -n hw.logicalcpu)
+codesign --force --sign - studio/build/Mcaster1InstallStudio.app
+open studio/build/Mcaster1InstallStudio.app</pre>
+
+  <h3>Runtime Installer</h3>
+  <pre>cmake -B runtime/build -S runtime \
+  -DCMAKE_PREFIX_PATH=$(brew --prefix qt) \
+  -DCMAKE_BUILD_TYPE=Debug
+cmake --build runtime/build -j$(sysctl -n hw.logicalcpu)
+codesign --force --sign - runtime/build/Mcaster1Installer.app</pre>
+
+  <h3>Incremental rebuild</h3>
+  <pre>cmake --build studio/build -j$(sysctl -n hw.logicalcpu) && \
+codesign --force --sign - studio/build/Mcaster1InstallStudio.app && \
+open studio/build/Mcaster1InstallStudio.app</pre>
+
+  <div class="callout warn">
+    <strong>Always codesign</strong> after building on macOS. Stale code-directory cache
+    causes SIGKILL on launch.
+  </div>
+</section>
+
+<footer>
+  Mcaster1 Install System v1.0.0 &bull;
+  <a href="PLANNING.html">Phase Tracker</a> &bull;
+  <a href="https://mcaster1.com">mcaster1.com</a>
+</footer>
+
+</main>
+</div>
+
+</body>
+</html>

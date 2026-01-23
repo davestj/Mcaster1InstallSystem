@@ -1,0 +1,189 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Mcaster1Installer.vcxproj — VS2022 project for the Mcaster1 Installer Runtime Wizard
+  ─────────────────────────────────────────────────────────────────────────────
+  Target:    Mcaster1Installer.exe
+  Platform:  x64 | MSVC v143 (VS2022)
+  Qt6:       Widgets + Svg + SvgWidgets  (no Concurrent needed for runtime)
+
+  Prerequisites:
+    Same as Mcaster1InstallStudio — see that project for full instructions.
+  ─────────────────────────────────────────────────────────────────────────────
+-->
+<Project DefaultTargets="Build" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
+
+  <!-- ── Project configurations ──────────────────────────────────────────── -->
+  <ItemGroup Label="ProjectConfigurations">
+    <ProjectConfiguration Include="Debug|x64">
+      <Configuration>Debug</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+    <ProjectConfiguration Include="Release|x64">
+      <Configuration>Release</Configuration>
+      <Platform>x64</Platform>
+    </ProjectConfiguration>
+  </ItemGroup>
+
+  <!-- ── Global properties ────────────────────────────────────────────────── -->
+  <PropertyGroup Label="Globals">
+    <ProjectGuid>{B5C6D7E8-F9A0-1B2C-3D4E-5F607182A3B4}</ProjectGuid>
+    <RootNamespace>Mcaster1Installer</RootNamespace>
+    <WindowsTargetPlatformVersion>10.0</WindowsTargetPlatformVersion>
+    <Keyword>Qt6Proj</Keyword>
+    <QtInstall>msvc2022_64</QtInstall>
+    <!-- Runtime only needs Widgets+Svg (no Concurrent) -->
+    <QtModules>core;gui;widgets;svg;svgwidgets</QtModules>
+  </PropertyGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.Default.props" />
+
+  <!-- ── Configuration properties ─────────────────────────────────────────── -->
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Debug|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>true</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+  </PropertyGroup>
+  <PropertyGroup Condition="'$(Configuration)|$(Platform)'=='Release|x64'" Label="Configuration">
+    <ConfigurationType>Application</ConfigurationType>
+    <UseDebugLibraries>false</UseDebugLibraries>
+    <PlatformToolset>v143</PlatformToolset>
+    <CharacterSet>Unicode</CharacterSet>
+    <WholeProgramOptimization>true</WholeProgramOptimization>
+  </PropertyGroup>
+
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.props" />
+
+  <!-- ── Qt VS Tools integration ───────────────────────────────────────────── -->
+  <ImportGroup Label="ExtensionSettings">
+    <Import Project="$(QtMsBuild)\qt_defaults.props"
+            Condition="Exists('$(QtMsBuild)\qt_defaults.props')" />
+  </ImportGroup>
+
+  <!-- ── Shared property sheets ────────────────────────────────────────────── -->
+  <ImportGroup Label="PropertySheets">
+    <Import Project="$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props"
+            Condition="exists('$(UserRootDir)\Microsoft.Cpp.$(Platform).user.props')"
+            Label="LocalAppDataPlatform" />
+    <Import Project="$(MSBuildThisFileDirectory)props\Qt6.props" />
+    <Import Project="$(MSBuildThisFileDirectory)props\Common.props" />
+  </ImportGroup>
+
+  <!-- ── Output directories ────────────────────────────────────────────────── -->
+  <PropertyGroup>
+    <OutDir>$(MSBuildThisFileDirectory)$(Platform)\$(Configuration)\</OutDir>
+    <IntDir>$(MSBuildThisFileDirectory)$(Platform)\$(Configuration)\$(ProjectName)\</IntDir>
+  </PropertyGroup>
+
+  <!-- ── Compiler: runtime-specific settings ───────────────────────────────── -->
+  <ItemDefinitionGroup>
+    <ClCompile>
+      <AdditionalIncludeDirectories>
+        $(MSBuildThisFileDirectory)..\runtime;
+        $(MSBuildThisFileDirectory)..\manifest;
+        %(AdditionalIncludeDirectories)
+      </AdditionalIncludeDirectories>
+    </ClCompile>
+    <Link>
+      <SubSystem>Windows</SubSystem>
+      <EntryPointSymbol>mainCRTStartup</EntryPointSymbol>
+      <!-- Runtime doesn't link Concurrent -->
+      <AdditionalDependencies>
+        %(AdditionalDependencies)
+      </AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+
+  <!-- Override Qt libs — Runtime doesn't need Concurrent -->
+  <ItemDefinitionGroup Condition="'$(Configuration)'=='Debug'">
+    <Link>
+      <AdditionalDependencies>
+        Qt6Cored.lib;Qt6Guid.lib;Qt6Widgetsd.lib;Qt6Svgd.lib;Qt6SvgWidgetsd.lib;
+        kernel32.lib;user32.lib;gdi32.lib;shell32.lib;advapi32.lib;
+        %(AdditionalDependencies)
+      </AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+  <ItemDefinitionGroup Condition="'$(Configuration)'=='Release'">
+    <Link>
+      <AdditionalDependencies>
+        Qt6Core.lib;Qt6Gui.lib;Qt6Widgets.lib;Qt6Svg.lib;Qt6SvgWidgets.lib;
+        kernel32.lib;user32.lib;gdi32.lib;shell32.lib;advapi32.lib;
+        %(AdditionalDependencies)
+      </AdditionalDependencies>
+    </Link>
+  </ItemDefinitionGroup>
+
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+  <!-- SOURCE FILES                                                           -->
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+
+  <!-- ── Runtime installer wizard sources ──────────────────────────────────── -->
+  <ItemGroup Label="RuntimeSources">
+    <ClCompile Include="..\runtime\main.cpp" />
+    <ClCompile Include="..\runtime\InstallerWizard.cpp" />
+    <ClCompile Include="..\runtime\WelcomePage.cpp" />
+    <ClCompile Include="..\runtime\LicensePage.cpp" />
+    <ClCompile Include="..\runtime\PrerequisitesPage.cpp" />
+    <ClCompile Include="..\runtime\ComponentsPage.cpp" />
+    <ClCompile Include="..\runtime\DirectoryPage.cpp" />
+    <ClCompile Include="..\runtime\ReadyPage.cpp" />
+    <ClCompile Include="..\runtime\InstallPage.cpp" />
+    <ClCompile Include="..\runtime\FinishPage.cpp" />
+    <ClCompile Include="..\runtime\InstallEngine.cpp" />
+  </ItemGroup>
+
+  <!-- ── Manifest library (compiled inline) ────────────────────────────────── -->
+  <ItemGroup Label="ManifestSources">
+    <ClCompile Include="..\manifest\Manifest.cpp" />
+  </ItemGroup>
+
+  <!-- ── MOC headers (Qt VS Tools) ────────────────────────────────────────── -->
+  <ItemGroup Label="QtMocHeaders" Condition="Exists('$(QtMsBuild)\qt.targets')">
+    <QtMoc Include="..\runtime\InstallerWizard.h" />
+    <QtMoc Include="..\runtime\WelcomePage.h" />
+    <QtMoc Include="..\runtime\LicensePage.h" />
+    <QtMoc Include="..\runtime\PrerequisitesPage.h" />
+    <QtMoc Include="..\runtime\ComponentsPage.h" />
+    <QtMoc Include="..\runtime\DirectoryPage.h" />
+    <QtMoc Include="..\runtime\ReadyPage.h" />
+    <QtMoc Include="..\runtime\InstallPage.h" />
+    <QtMoc Include="..\runtime\FinishPage.h" />
+    <QtMoc Include="..\runtime\InstallEngine.h" />
+    <QtMoc Include="..\runtime\InstallerStyle.h" />
+  </ItemGroup>
+
+  <!-- ── All other headers ────────────────────────────────────────────────── -->
+  <ItemGroup Label="Headers">
+    <ClInclude Include="..\manifest\Manifest.h" />
+  </ItemGroup>
+
+  <!-- ── Windows application manifest (UAC) ────────────────────────────────── -->
+  <ItemGroup Label="AppManifest">
+    <Manifest Include="$(MSBuildThisFileDirectory)res\Mcaster1Installer.manifest">
+      <SubType>Designer</SubType>
+    </Manifest>
+  </ItemGroup>
+
+  <!-- ── Windows resource file (.rc) ──────────────────────────────────────── -->
+  <ItemGroup Label="Resources">
+    <ResourceCompile Include="$(MSBuildThisFileDirectory)res\Mcaster1Installer.rc" />
+  </ItemGroup>
+
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+  <!-- TARGETS IMPORT                                                         -->
+  <!-- ══════════════════════════════════════════════════════════════════════ -->
+  <Import Project="$(VCTargetsPath)\Microsoft.Cpp.targets" />
+  <ImportGroup Label="ExtensionTargets">
+    <Import Project="$(QtMsBuild)\qt.targets"
+            Condition="Exists('$(QtMsBuild)\qt.targets')" />
+  </ImportGroup>
+
+  <Target Name="WinDeployQt" AfterTargets="Build"
+          Condition="'$(RunWinDeployQt)'=='true' AND '$(Qt6Dir)' != ''">
+    <Exec Command="&quot;$(Qt6Dir)\bin\windeployqt.exe&quot; &quot;$(OutDir)$(TargetName)$(TargetExt)&quot;"
+          ConsoleToMsBuild="true"
+          ContinueOnError="true" />
+  </Target>
+
+</Project>

@@ -49,10 +49,11 @@
 
 // ── FileEntry ─────────────────────────────────────────────────────────────────
 struct FileEntry {
-    QString src;            // relative path inside payload/
-    QString dst;            // destination — may contain {install-dir}
-    QString chmod;          // "+x" for executables, "" otherwise
-    bool    isDir = false;  // true → recursive directory copy
+    QString     src;            // relative path inside payload/
+    QString     dst;            // destination — may contain {install-dir}
+    QString     chmod;          // "+x" for executables, "" otherwise
+    bool        isDir = false;  // true → recursive directory copy
+    QStringList platforms;      // empty = all platforms; else ["macos","windows","linux"]
 };
 
 // ── Shortcut ──────────────────────────────────────────────────────────────────
@@ -90,6 +91,15 @@ struct CustomAction {
     QStringList platforms;
 };
 
+// ── AppGroup ──────────────────────────────────────────────────────────────────
+// Logical grouping of components (e.g. one group per deliverable application).
+// Groups are stored in Manifest::appGroups; Component::appGroup is the group ID tag.
+struct AppGroup {
+    QString id;
+    QString name;
+    QString description;
+};
+
 // ── Component ─────────────────────────────────────────────────────────────────
 struct Component {
     QString            id;
@@ -100,6 +110,7 @@ struct Component {
     QList<FileEntry>   files;
     QStringList        depends;   // other component IDs
     QStringList        platforms; // empty = all platforms
+    QString            appGroup;  // references AppGroup::id; empty = ungrouped
 };
 
 // ── AppInfo ───────────────────────────────────────────────────────────────────
@@ -135,6 +146,26 @@ struct WizardTheme {
     bool    darkMode = false;
 };
 
+// ── SigningConfig ─────────────────────────────────────────────────────────────
+// Stored inside the .mis file under the "signing:" key.
+// Passwords are NOT persisted here — always entered at sign-time.
+struct SigningConfig {
+    // macOS Authenticode / Developer ID
+    QString macosSigner;          // "Developer ID Application: ACME Corp (XXXXXXXXXX)"
+    QString macosTeamId;          // 10-char Team ID
+    bool    macosHardened  = true; // --options runtime (required for notarization)
+    bool    macosNotarize  = false;
+    QString macosProfile;         // xcrun notarytool store-credentials profile name
+
+    // Windows Authenticode
+    QString winPfxPath;           // path to .pfx / .p12 certificate
+    QString winTimestampUrl;      // e.g. http://timestamp.sectigo.com
+
+    // Linux GPG
+    QString linuxGpgKey;          // GPG key ID or fingerprint
+    bool    linuxSignDebs  = false;
+};
+
 // ── Manifest ──────────────────────────────────────────────────────────────────
 class Manifest
 {
@@ -144,6 +175,8 @@ public:
     AppInfo              app;
     InstallDefaults      defaults;
     WizardTheme          theme;
+    SigningConfig        signing;
+    QList<AppGroup>      appGroups;     // logical application groups for the FilesEditor tree
     QList<Component>     components;
     QList<Shortcut>      shortcuts;
     QList<RegistryEntry> registry;     // Windows registry entries

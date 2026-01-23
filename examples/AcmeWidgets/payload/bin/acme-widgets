@@ -1,0 +1,96 @@
+#!/usr/bin/env bash
+# ──────────────────────────────────────────────────────────────────────────────
+# acme-widgets  —  ACME Widgets 2.1.0  (example / demo binary)
+#
+# This is a demonstration stub for the Mcaster1 Install System example project.
+# In a real distribution this would be the actual application binary.
+# ──────────────────────────────────────────────────────────────────────────────
+
+APP_NAME="Acme Widgets"
+APP_VERSION="2.1.0"
+APP_VENDOR="ACME Corporation"
+INSTALL_DIR="$(dirname "$(dirname "$(realpath "$0" 2>/dev/null || echo "$0")")")"
+CONFIG_FILE="$INSTALL_DIR/etc/acme-widgets.conf"
+
+# ── Colour helpers ─────────────────────────────────────────────────────────────
+if [ -t 1 ]; then
+    BOLD="\033[1m"; RESET="\033[0m"; CYAN="\033[36m"; GREEN="\033[32m"
+    YELLOW="\033[33m"; GRAY="\033[90m"
+else
+    BOLD="" RESET="" CYAN="" GREEN="" YELLOW="" GRAY=""
+fi
+
+print_banner() {
+    printf "\n"
+    printf "${BOLD}  ╔══════════════════════════════════════╗${RESET}\n"
+    printf "${BOLD}  ║  %-36s  ║${RESET}\n" "${APP_NAME} ${APP_VERSION}"
+    printf "${BOLD}  ║  %-36s  ║${RESET}\n" "${APP_VENDOR}"
+    printf "${BOLD}  ╚══════════════════════════════════════╝${RESET}\n"
+    printf "\n"
+}
+
+print_help() {
+    printf "${BOLD}Usage:${RESET}  acme-widgets [command] [options]\n\n"
+    printf "${BOLD}Commands:${RESET}\n"
+    printf "  ${CYAN}start${RESET}         Start the widget service\n"
+    printf "  ${CYAN}stop${RESET}          Stop the widget service\n"
+    printf "  ${CYAN}status${RESET}        Show service status\n"
+    printf "  ${CYAN}list${RESET}          List all configured widgets\n"
+    printf "  ${CYAN}config${RESET}        Show current configuration\n"
+    printf "  ${CYAN}version${RESET}       Show version information\n"
+    printf "  ${CYAN}--help${RESET}        Show this help message\n\n"
+    printf "${GRAY}Install directory: ${INSTALL_DIR}${RESET}\n"
+    printf "${GRAY}Config file:       ${CONFIG_FILE}${RESET}\n\n"
+}
+
+cmd="${1:-}"
+
+case "$cmd" in
+    ""|"--help"|"-h")
+        print_banner
+        print_help
+        ;;
+    "version"|"--version"|"-v")
+        printf "${APP_NAME} ${APP_VERSION}\n"
+        printf "Vendor:  ${APP_VENDOR}\n"
+        printf "Support: https://support.acme-corp.example.com\n"
+        ;;
+    "start")
+        print_banner
+        printf "${GREEN}✓${RESET}  Widget service starting…\n"
+        printf "${GRAY}   (demo — no actual service is started)${RESET}\n"
+        ;;
+    "stop")
+        printf "${YELLOW}⚠${RESET}  Widget service stopping…\n"
+        printf "${GRAY}   (demo — no service was running)${RESET}\n"
+        ;;
+    "status")
+        printf "${BOLD}Service:${RESET} acme-widgets\n"
+        printf "${BOLD}Status: ${RESET} ${GREEN}installed${RESET} (demo mode)\n"
+        printf "${BOLD}Version:${RESET} ${APP_VERSION}\n"
+        printf "${BOLD}Config: ${RESET} ${CONFIG_FILE}\n"
+        ;;
+    "list")
+        print_banner
+        printf "${BOLD}Configured widgets:${RESET}\n"
+        printf "  ${CYAN}1.${RESET} acme-clock-widget      v1.0  ${GREEN}active${RESET}\n"
+        printf "  ${CYAN}2.${RESET} acme-weather-widget    v2.3  ${GREEN}active${RESET}\n"
+        printf "  ${CYAN}3.${RESET} acme-stock-widget      v1.8  ${YELLOW}disabled${RESET}\n"
+        printf "\n${GRAY}(demo data — no real widgets are configured)${RESET}\n"
+        ;;
+    "config")
+        if [ -f "$CONFIG_FILE" ]; then
+            printf "${BOLD}Configuration (${CONFIG_FILE}):${RESET}\n\n"
+            cat "$CONFIG_FILE"
+        else
+            printf "${YELLOW}⚠${RESET}  Config file not found: ${CONFIG_FILE}\n"
+        fi
+        ;;
+    *)
+        printf "${BOLD}acme-widgets:${RESET} unknown command '${cmd}'\n"
+        printf "Run '${BOLD}acme-widgets --help${RESET}' for usage.\n" >&2
+        exit 1
+        ;;
+esac
+
+exit 0
