@@ -10,10 +10,22 @@
  *                               Prerequisites | Actions | Build]]
  *   [EventLog dock (bottom)]   [BuildHistory dock (right)]   [Help dock (right)]
  *   [Status Bar: [Project: name v1.0] ─── [Studio v1.0.0] ]
+ *
+ * Multi-project model
+ * ───────────────────
+ *   m_openProjects  — all currently-open projects held in memory simultaneously
+ *   m_activeIdx     — which project is shown in the editor tabs
+ *
+ *   Opening a new project adds it to the list (never closes others).
+ *   Switching projects in the sidebar auto-saves the current one silently.
+ *   No "discard changes?" prompts — changes auto-save after each edit.
+ *   Ctrl+S / Save button saves the active project in-place (or asks for a
+ *   path if it has never been saved).
  */
 
 #include <QMainWindow>
 #include <QString>
+#include <QList>
 #include "Manifest.h"
 #include "BuilderProfile.h"
 #include "StudioStyle.h"
@@ -49,7 +61,7 @@ public:
     explicit StudioMainWindow(QWidget *parent = nullptr);
     ~StudioMainWindow() override = default;
 
-    // Open a .mis project file
+    // Open a .mis file — adds to the open project list (or switches if already open)
     void openProject(const QString &path);
 
 protected:
@@ -76,44 +88,63 @@ private slots:
     // Clock
     void onClockTick();
 
-    // Emitted by BuildPanel → routed here for the log dock + HUD
+    // BuildPanel signals
     void onBuildLog(const QString &line);
     void onBuildProgress(int pct, const QString &msg);
     void onBuildFinished(bool ok, const QString &outputPath);
 
-    // Emitted by ProjectSidebar → navigate to that application's Files tab
+    // ProjectSidebar signals
     void onApplicationSelected(const QString &appGroupId);
-
-    // Mark project dirty when any editor signals a change
-    void onProjectModified();
-
-    // Update project info label in status bar when AppInfo changes
-    void onProjectInfoChanged();
-
-    // Inline sidebar name edit + auto-save
-    void onProjectNameChanged(const QString &name);
-    void onAutoSave();
-
-    // Sidebar action slots
-    void onAddApplication();
     void onSwitchProject(const QString &path);
-    void onRemoveProjectFromProfile(const QString &path);
+    void onCloseProject(const QString &path);    // removes from session, not disk
+    void onCopyProject(const QString &path);     // duplicate project with new name
+    void onDeleteProject(const QString &path);   // remove from session + delete .mis file
+    void onAddApplication();
+    void onDeleteApplication(const QString &appGroupId);
+    void onRenameProject(const QString &path, const QString &newName);  // any project
+    void onProjectNameChanged(const QString &name);  // AppInfoEditor→active project only
+
+    // Editor change signals
+    void onProjectModified();
+    void onProjectInfoChanged();
+    void onAutoSave();
 
     // Theme switching
     void onThemeChanged(StudioStyle::ThemeManager::ThemeId id);
 
 private:
+    // ── Per-project record (all open simultaneously in memory) ────────────
+    struct OpenProject {
+        Manifest manifest;
+        QString  path;              // abs path to .mis; empty = never saved
+        bool     dirty  = false;
+        QString  tempId;            // UUID used as key before first save
+        QString  activeAppGroupId;  // which AppGroup is shown in editors
+        QString  key()  const { return path.isEmpty() ? tempId : path; }
+    };
+
+    bool               hasActive() const {
+        return m_activeIdx >= 0 && m_activeIdx < m_openProjects.size();
+    }
+    OpenProject       &active()       { return m_openProjects[m_activeIdx]; }
+    const OpenProject &active() const { return m_openProjects[m_activeIdx]; }
+
+    // Switch the editor panel to a different open project (auto-saves current)
+    void switchToProject(int index);
+
+    // Silently save the active project if dirty and it has a path
+    void autoSaveActive();
+
     void buildUi();
     void buildMenuBar();
     void buildToolBar();
     void updateWindowTitle();
     void updateProjectInfoLabel();
     void updateHud(const char *iconSvg, const QString &tip);
-    void loadEditors();      // push m_manifest into all editor tabs
-    void collectEditors();   // pull from all editor tabs into m_manifest
-    bool confirmDiscard();   // returns true if safe to discard current project
+    void loadEditors();      // push active().manifest into all editor tabs
+    void collectEditors();   // pull from all editor tabs into active().manifest
     void refreshProfileCombo();
-    void rebuildIcons();     // re-render all toolbar + tab icons for current theme
+    void rebuildIcons();
     void associateProjectWithProfile(const QString &path);
     void refreshSidebar();
     static QString sanitizeFilename(const QString &name);
@@ -121,10 +152,9 @@ private:
     QIcon svgIcon(const char *svgStr, int size = 24);
 
     // ── Data ──────────────────────────────────────────────────────────────
-    Manifest             m_manifest;
-    QString              m_projectPath;
-    bool                 m_dirty       = false;
-    bool                 m_initialized = false;
+    QList<OpenProject>    m_openProjects;
+    int                   m_activeIdx      = -1;
+    bool                  m_loading        = false;  // guard during loadEditors()
     BuilderProfileManager m_profileManager;
 
     // ── Widgets ───────────────────────────────────────────────────────────
@@ -150,18 +180,18 @@ private:
     BuildHistory   *m_buildHistory   = nullptr;
     HelpPanel      *m_helpPanel      = nullptr;
 
-    // Auto-save timer (1500ms debounce after inline name edit)
+    // Auto-save timer (fires 1500ms after last edit)
     QTimer     *m_autoSaveTimer      = nullptr;
 
-    // Toolbar / HUD widgets
+    // Toolbar / HUD
     QComboBox  *m_profileCombo       = nullptr;
-    QLabel     *m_hudIcon            = nullptr;  // SVG status icon pixmap
+    QLabel     *m_hudIcon            = nullptr;
     QLabel     *m_clockLabel         = nullptr;
     QTimer     *m_clockTimer         = nullptr;
 
-    // Status bar labels
-    QLabel     *m_projectInfoLabel   = nullptr;  // "Project: AppName v1.0"
-    QLabel     *m_studioVersionLabel = nullptr;  // "Studio v1.0.0"
+    // Status bar
+    QLabel     *m_projectInfoLabel   = nullptr;
+    QLabel     *m_studioVersionLabel = nullptr;
 
     // ── Actions ───────────────────────────────────────────────────────────
     QAction *m_actNew        = nullptr;
@@ -172,7 +202,6 @@ private:
     QAction *m_actImportNsis = nullptr;
     QAction *m_actImportInno = nullptr;
 
-    // Theme toggle actions (checked = active theme)
     QAction *m_actThemeDark       = nullptr;
     QAction *m_actThemeEnterprise = nullptr;
 };

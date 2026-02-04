@@ -66,12 +66,18 @@ inline QString darkSheet()
     "QSplitter::handle { background: #2d3a60; }"
     "QSplitter::handle:horizontal { width: 2px; }"
     "QSplitter::handle:vertical   { height: 2px; }"
-    /* ── Sidebar tree ─────────────────────────────────────────────────────*/
+    /* ── General tree widgets (editor panels) ────────────────────────────*/
     "QTreeWidget { background: #1c2e52; border: none; color: #e0e0e8; outline: none; }"
     "QTreeWidget::item { padding: 4px 6px; border-radius: 4px; }"
     "QTreeWidget::item:hover    { background: #2d3a60; }"
     "QTreeWidget::item:selected { background: #163968; color: #00c9ff; }"
     "QTreeWidget::branch { background: #1c2e52; }"
+    /* ── Sidebar navigator tree ───────────────────────────────────────────*/
+    "QTreeWidget#sidebarTree { background: #111a2e; border: none; color: #c8cce0; }"
+    "QTreeWidget#sidebarTree::item { padding: 5px 4px; border-radius: 3px; }"
+    "QTreeWidget#sidebarTree::item:hover    { background: #1c2e52; }"
+    "QTreeWidget#sidebarTree::item:selected { background: #163968; color: #00c9ff; }"
+    "QTreeWidget#sidebarTree::branch { background: #111a2e; }"
     /* ── Tab bar ──────────────────────────────────────────────────────────*/
     "QTabWidget::pane { border: none; border-top: 1px solid #2d3a60; }"
     "QTabBar::tab { background: #1c2e52; color: #888899; "
@@ -239,14 +245,19 @@ inline QString enterpriseSheet()
                          "stop:0 #d8d8d8, stop:0.5 #c8c8c8, stop:1 #d8d8d8); }"
     "QSplitter::handle:horizontal { width: 3px; }"
     "QSplitter::handle:vertical   { height: 3px; }"
-    /* ── Sidebar tree ─────────────────────────────────────────────────────*/
+    /* ── General tree widgets (editor panels) ────────────────────────────*/
     "QTreeWidget { background: #ffffff; border: 1px solid #c8c8c8; "
-                   "color: #1a1a1a; outline: none; "
-                   "border-top: none; }"
+                   "color: #1a1a1a; outline: none; border-top: none; }"
     "QTreeWidget::item { padding: 4px 6px; }"
     "QTreeWidget::item:hover    { background: #e8f0fa; }"
     "QTreeWidget::item:selected { background: #0070d0; color: #ffffff; }"
     "QTreeWidget::branch { background: #ffffff; }"
+    /* ── Sidebar navigator tree ───────────────────────────────────────────*/
+    "QTreeWidget#sidebarTree { background: #f0f4fa; border: none; color: #1a2a4a; }"
+    "QTreeWidget#sidebarTree::item { padding: 5px 4px; border-radius: 3px; }"
+    "QTreeWidget#sidebarTree::item:hover    { background: #dce8f8; }"
+    "QTreeWidget#sidebarTree::item:selected { background: #0070d0; color: #ffffff; }"
+    "QTreeWidget#sidebarTree::branch { background: #f0f4fa; }"
     /* ── Tab bar ──────────────────────────────────────────────────────────*/
     "QTabWidget::pane { border: 1px solid #c0c0c0; border-top: none; "
                         "background: #f8f8f8; }"

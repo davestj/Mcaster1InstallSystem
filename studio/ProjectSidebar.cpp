@@ -15,9 +15,15 @@
 #include <QSignalBlocker>
 #include <QFont>
 #include <QFileInfo>
+#include <QMenu>
+#include <QAction>
+#include <QMessageBox>
+#include <QEvent>
+#include <QContextMenuEvent>
 
-static const int kRoleData = Qt::UserRole;      // path (project) | appGroupId (app) | "" (addapp)
-static const int kRoleType = Qt::UserRole + 1;  // "project" | "app" | "addapp"
+static const int kRoleData     = Qt::UserRole;      // path (project) | appGroupId (app)
+static const int kRoleType     = Qt::UserRole + 1;  // "project" | "app" | "addapp"
+static const int kRoleIsActive = Qt::UserRole + 2;  // bool — active project flag
 
 // ── Constructor ───────────────────────────────────────────────────────────────
 ProjectSidebar::ProjectSidebar(QWidget *parent)
@@ -34,15 +40,14 @@ void ProjectSidebar::refresh(const QList<ProjectEntry> &projects)
     m_tree->clear();
 
     for (const ProjectEntry &e : projects) {
-        if (e.isActive)
+        if (e.isActive) {
             m_activeProjectPath = e.path;
+            m_activeAppGroupId  = e.activeAppGroupId;
+        }
 
         QTreeWidgetItem *projNode = addProjectNode(e);
-
-        if (e.isActive) {
-            populateApps(projNode, e);
-            projNode->setExpanded(true);
-        }
+        populateApps(projNode, e);
+        projNode->setExpanded(e.isActive);  // active project starts expanded
     }
 }
 
@@ -58,6 +63,30 @@ void ProjectSidebar::setActiveProjectName(const QString &name)
     }
 }
 
+void ProjectSidebar::setActiveAppGroup(const QString &id)
+{
+    m_activeAppGroupId = id;
+
+    // Walk all app items and toggle bold + bullet prefix
+    QSignalBlocker block(m_tree);
+    for (int i = 0; i < m_tree->topLevelItemCount(); ++i) {
+        auto *proj = m_tree->topLevelItem(i);
+        for (int j = 0; j < proj->childCount(); ++j) {
+            auto *child = proj->child(j);
+            if (child->data(0, kRoleType).toString() != "app") continue;
+
+            const bool active = (child->data(0, kRoleData).toString() == id);
+            QFont f = child->font(0);
+            f.setBold(active);
+            child->setFont(0, f);
+
+            // Bullet prefix indicates the active app
+            const QString rawName = child->text(0).mid(2).trimmed();  // strip old prefix
+            child->setText(0, (active ? "  \u25cf " : "  ") + rawName);
+        }
+    }
+}
+
 // ── Private slots ─────────────────────────────────────────────────────────────
 
 void ProjectSidebar::onItemClicked(QTreeWidgetItem *item, int /*col*/)
@@ -67,12 +96,14 @@ void ProjectSidebar::onItemClicked(QTreeWidgetItem *item, int /*col*/)
 
     if (type == "project") {
         const QString path = item->data(0, kRoleData).toString();
-        if (path != m_activeProjectPath && !path.isEmpty())
+        // Only switch if clicking a *different* project
+        if (path != m_activeProjectPath)
             emit switchProjectRequested(path);
-        // expand/collapse is handled automatically by QTreeWidget
 
     } else if (type == "app") {
-        emit applicationSelected(item->data(0, kRoleData).toString());
+        const QString id = item->data(0, kRoleData).toString();
+        setActiveAppGroup(id);
+        emit applicationSelected(id);
 
     } else if (type == "addapp") {
         emit addApplicationRequested();
@@ -84,18 +115,107 @@ void ProjectSidebar::onItemChanged(QTreeWidgetItem *item, int col)
     if (!item || col != 0) return;
     if (item->data(0, kRoleType).toString() != "project") return;
 
-    // Only allow rename of the currently active project
-    if (item->data(0, kRoleData).toString() != m_activeProjectPath) {
-        // Revert non-active item to its stored filename
-        QSignalBlocker block(m_tree);
-        const QString path = item->data(0, kRoleData).toString();
-        item->setText(0, path.isEmpty() ? "New Project" : QFileInfo(path).baseName());
-        return;
-    }
-
-    m_pendingRename = item->text(0).trimmed();
+    const QString path = item->data(0, kRoleData).toString();
+    m_pendingRename     = item->text(0).trimmed();
+    m_pendingRenamePath = path;
     if (!m_pendingRename.isEmpty())
         m_renameTimer->start();
+}
+
+// ── Event filter — intercepts right-click on the viewport ─────────────────────
+
+bool ProjectSidebar::eventFilter(QObject *obj, QEvent *event)
+{
+    if (obj == m_tree->viewport() && event->type() == QEvent::ContextMenu) {
+        auto *ce   = static_cast<QContextMenuEvent *>(event);
+        // ce->pos() is in viewport coordinates — exactly what itemAt() expects
+        QTreeWidgetItem *item = m_tree->itemAt(ce->pos());
+        if (item)
+            showContextMenu(item, ce->globalPos());
+        return true;  // always consume so Qt doesn't open a default menu
+    }
+    return QWidget::eventFilter(obj, event);
+}
+
+void ProjectSidebar::showContextMenu(QTreeWidgetItem *item, const QPoint &globalPos)
+{
+    const QString type = item->data(0, kRoleType).toString();
+
+    // ── Project context menu ──────────────────────────────────────────────
+    if (type == "project") {
+        const QString path = item->data(0, kRoleData).toString();
+        const QString name = item->text(0);
+
+        QMenu menu(this);
+
+        auto *actRename = menu.addAction("Rename Project");
+        actRename->setToolTip("Rename this project (F2 or double-click also works)");
+
+        menu.addSeparator();
+        auto *actCopy = menu.addAction("Copy Project\u2026");
+        actCopy->setToolTip("Duplicate this project with a new name");
+
+        menu.addSeparator();
+        auto *actClose = menu.addAction("Close Project");
+        actClose->setToolTip("Remove from session \u2014 file is NOT deleted from disk");
+
+        menu.addSeparator();
+        auto *actDelete = menu.addAction("Delete Project");
+        actDelete->setToolTip("Close and permanently delete the .mis file from disk");
+
+        connect(actRename, &QAction::triggered, this, [this, item]() {
+            m_tree->editItem(item, 0);
+        });
+        connect(actCopy, &QAction::triggered, this, [this, path]() {
+            emit copyProjectRequested(path);
+        });
+        connect(actClose, &QAction::triggered, this, [this, path]() {
+            emit closeProjectRequested(path);
+        });
+        connect(actDelete, &QAction::triggered, this, [this, path, name]() {
+            const int ret = QMessageBox::warning(
+                this, "Delete Project",
+                QString("Permanently delete \"%1\" and remove its .mis file from disk?\n\n"
+                        "This cannot be undone.").arg(name),
+                QMessageBox::Yes | QMessageBox::Cancel, QMessageBox::Cancel);
+            if (ret == QMessageBox::Yes)
+                emit deleteProjectRequested(path);
+        });
+
+        menu.exec(globalPos);
+
+    // ── Application context menu ──────────────────────────────────────────
+    } else if (type == "app") {
+        const QString appId   = item->data(0, kRoleData).toString();
+        const QString appName = item->text(0).trimmed().remove(QChar(0x25cf)).trimmed();
+
+        QMenu menu(this);
+
+        auto *actSetActive = menu.addAction("Set as Active Application");
+        actSetActive->setToolTip("Switch editors to show this application's files and settings");
+
+        menu.addSeparator();
+        auto *actDelete = menu.addAction("Delete Application");
+        actDelete->setToolTip(QString("Remove \"%1\" from this project").arg(appName));
+
+        connect(actSetActive, &QAction::triggered, this, [this, appId]() {
+            setActiveAppGroup(appId);
+            emit applicationSelected(appId);
+        });
+        connect(actDelete, &QAction::triggered, this, [this, appId, appName]() {
+            const int ret = QMessageBox::warning(
+                this, "Delete Application",
+                QString("Remove application \"%1\" from this project?\n\n"
+                        "All files, components, and settings for this application will be lost.")
+                    .arg(appName),
+                QMessageBox::Yes | QMessageBox::Cancel, QMessageBox::Cancel);
+            if (ret == QMessageBox::Yes)
+                emit deleteApplicationRequested(appId);
+        });
+
+        menu.exec(globalPos);
+    }
+    // "addapp" node: no context menu
 }
 
 // ── Private helpers ───────────────────────────────────────────────────────────
@@ -120,14 +240,14 @@ void ProjectSidebar::buildUi()
     hb->addWidget(lbl);
     hb->addStretch();
 
-    m_btnNew = new QPushButton("＋ New", toolbar);
+    m_btnNew = new QPushButton("\uff0b New", toolbar);
     m_btnNew->setObjectName("sidebarIconBtn");
     m_btnNew->setFixedHeight(22);
     m_btnNew->setToolTip("Create a new installer project");
     connect(m_btnNew, &QPushButton::clicked, this, &ProjectSidebar::newProjectRequested);
     hb->addWidget(m_btnNew);
 
-    m_btnOpen = new QPushButton("📂 Open", toolbar);
+    m_btnOpen = new QPushButton("\U0001f4c2 Open", toolbar);
     m_btnOpen->setObjectName("sidebarIconBtn");
     m_btnOpen->setFixedHeight(22);
     m_btnOpen->setToolTip("Open an existing .mis project file");
@@ -136,20 +256,17 @@ void ProjectSidebar::buildUi()
 
     layout->addWidget(toolbar);
 
-    // ── Unified two-column tree ───────────────────────────────────────────
-    // Col 0: expand arrow + name (stretch)
-    // Col 1: [✕] close button (fixed 26 px, project rows only)
+    // ── Single-column tree — right-click for all project/app actions ──────
     m_tree = new QTreeWidget(this);
     m_tree->setObjectName("sidebarTree");
-    m_tree->setColumnCount(2);
+    m_tree->setColumnCount(1);
     m_tree->header()->hide();
     m_tree->header()->setSectionResizeMode(0, QHeaderView::Stretch);
-    m_tree->header()->setSectionResizeMode(1, QHeaderView::Fixed);
-    m_tree->header()->resizeSection(1, 26);
     m_tree->setRootIsDecorated(true);
     m_tree->setAnimated(true);
     m_tree->setIndentation(16);
     m_tree->setFocusPolicy(Qt::StrongFocus);
+    m_tree->setContextMenuPolicy(Qt::CustomContextMenu);
     layout->addWidget(m_tree, 1);
 
     connect(m_tree, &QTreeWidget::itemClicked,
@@ -157,13 +274,17 @@ void ProjectSidebar::buildUi()
     connect(m_tree, &QTreeWidget::itemChanged,
             this, &ProjectSidebar::onItemChanged);
 
+    // Install event filter on viewport — the reliable way to intercept right-click
+    // context menu events on a QTreeWidget regardless of coordinate system nuances.
+    m_tree->viewport()->installEventFilter(this);
+
     // ── Rename debounce timer ─────────────────────────────────────────────
     m_renameTimer = new QTimer(this);
     m_renameTimer->setSingleShot(true);
     m_renameTimer->setInterval(1200);
     connect(m_renameTimer, &QTimer::timeout, this, [this]() {
         if (!m_pendingRename.isEmpty())
-            emit projectNameChanged(m_pendingRename);
+            emit renameProjectRequested(m_pendingRenamePath, m_pendingRename);
     });
 
     setMinimumWidth(180);
@@ -178,32 +299,20 @@ QTreeWidgetItem *ProjectSidebar::addProjectNode(const ProjectEntry &entry)
 
     auto *item = new QTreeWidgetItem(m_tree);
     item->setText(0, displayName);
-    item->setData(0, kRoleData, entry.path);
-    item->setData(0, kRoleType, "project");
-    item->setToolTip(0, entry.path.isEmpty() ? "(unsaved — use File > Save to save)" : entry.path);
+    item->setData(0, kRoleData,     entry.path);
+    item->setData(0, kRoleType,     QString("project"));
+    item->setData(0, kRoleIsActive, entry.isActive);
+    item->setToolTip(0, entry.path.isEmpty()
+                     ? "(unsaved \u2014 use File \u25b8 Save to save)"
+                     : entry.path);
+
+    // All project nodes are editable — F2 or double-click to rename inline
+    item->setFlags(item->flags() | Qt::ItemIsEditable);
 
     if (entry.isActive) {
-        // Bold + editable (double-click or F2 to rename inline)
         QFont f = item->font(0);
         f.setBold(true);
         item->setFont(0, f);
-        item->setFlags(item->flags() | Qt::ItemIsEditable);
-    } else {
-        item->setFlags(item->flags() & ~Qt::ItemIsEditable);
-    }
-
-    // [✕] in column 1 — only for projects with a known path (can't remove an unsaved project)
-    if (!entry.path.isEmpty()) {
-        auto *btn = new QPushButton("✕");
-        btn->setObjectName("sidebarIconBtn");
-        btn->setFixedSize(20, 20);
-        btn->setFlat(true);
-        btn->setToolTip("Remove from profile (file is NOT deleted from disk)");
-        const QString path = entry.path;
-        connect(btn, &QPushButton::clicked, this, [this, path]() {
-            emit removeProjectFromProfile(path);
-        });
-        m_tree->setItemWidget(item, 1, btn);
     }
 
     return item;
@@ -212,27 +321,39 @@ QTreeWidgetItem *ProjectSidebar::addProjectNode(const ProjectEntry &entry)
 void ProjectSidebar::populateApps(QTreeWidgetItem *projectNode,
                                   const ProjectEntry &entry)
 {
-    // One child item per AppGroup
     for (int i = 0; i < entry.appGroupIds.size(); ++i) {
-        const QString name = (i < entry.appGroupNames.size() && !entry.appGroupNames[i].isEmpty())
-                             ? entry.appGroupNames[i]
-                             : entry.appGroupIds[i];
+        const QString &id   = entry.appGroupIds[i];
+        const QString  name = (i < entry.appGroupNames.size() && !entry.appGroupNames[i].isEmpty())
+                              ? entry.appGroupNames[i]
+                              : id;
+
+        const bool isActiveApp = (!entry.activeAppGroupId.isEmpty() &&
+                                  id == entry.activeAppGroupId);
 
         auto *appItem = new QTreeWidgetItem(projectNode);
-        appItem->setText(0, "  " + name);
-        appItem->setData(0, kRoleData, entry.appGroupIds[i]);
-        appItem->setData(0, kRoleType, "app");
+        // Bullet prefix for the active app
+        appItem->setText(0, (isActiveApp ? "  \u25cf " : "  ") + name);
+        appItem->setData(0, kRoleData, id);
+        appItem->setData(0, kRoleType, QString("app"));
         appItem->setFlags(appItem->flags() & ~Qt::ItemIsEditable);
-        appItem->setToolTip(0, QString("Application: %1\nClick to navigate to Files tab").arg(name));
+        appItem->setToolTip(0, QString("Application: %1\n"
+                                       "Left-click to navigate \u2014 Right-click for options")
+                                .arg(name));
+
+        if (isActiveApp) {
+            QFont f = appItem->font(0);
+            f.setBold(true);
+            appItem->setFont(0, f);
+        }
     }
 
     // "＋ Add Application…" pseudo-item always at bottom
     auto *addItem = new QTreeWidgetItem(projectNode);
-    addItem->setText(0, "  ＋ Add Application\u2026");
+    addItem->setText(0, "  \uff0b Add Application\u2026");
     addItem->setData(0, kRoleData, QString());
-    addItem->setData(0, kRoleType, "addapp");
+    addItem->setData(0, kRoleType, QString("addapp"));
     addItem->setFlags(addItem->flags() & ~Qt::ItemIsEditable);
-    addItem->setToolTip(0, "Add a new application to this project");
+    addItem->setToolTip(0, "Add a new application group to this project");
     QFont f = addItem->font(0);
     f.setItalic(true);
     addItem->setFont(0, f);

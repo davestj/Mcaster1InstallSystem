@@ -91,6 +91,26 @@ void BuildPanel::startBuild(const Manifest &m, const QString &projectDir)
     onBuildClicked();
 }
 
+void BuildPanel::applyProfile(const BuilderProfile &profile)
+{
+    m_activeProfile = profile;
+
+    // Update the signing status strip
+    QString text;
+    if (profile.skipSigning) {
+        text = "⚠  Signing: DISABLED — unsigned build (internal testing only)";
+    } else if (profile.devSignMode) {
+        text = "⚙  Signing: Ad-hoc dev  (codesign --sign -, no Apple cert required)";
+    } else if (!profile.macosSigningId.isEmpty()) {
+        text = QString("✓  Signing: %1").arg(profile.macosSigningId);
+    } else if (!profile.displayName.isEmpty()) {
+        text = QString("—  Signing: no identity in profile \"%1\"").arg(profile.displayName);
+    } else {
+        text = "—  Signing: no profile active — using manifest signing block";
+    }
+    m_signingModeLabel->setText(text);
+}
+
 // ── Slots ─────────────────────────────────────────────────────────────────────
 void BuildPanel::onBrowseOutput()
 {
@@ -128,6 +148,28 @@ void BuildPanel::onBuildClicked()
         QMessageBox::warning(this, "Manifest Validation Failed",
             "Fix these issues before building:\n\n" + manifestErrors.join('\n'));
         return;
+    }
+
+    // ── Apply profile signing overrides (build-time only; .mis not mutated) ──
+    if (m_activeProfile.skipSigning) {
+        m_manifest.signing.macosSigner   = QString();
+        m_manifest.signing.macosNotarize = false;
+        m_manifest.signing.winPfxPath    = QString();
+        m_manifest.signing.linuxGpgKey   = QString();
+    } else if (m_activeProfile.devSignMode) {
+        // Ad-hoc: clear identity strings so backends use codesign --sign -
+        m_manifest.signing.macosSigner   = QString();
+        m_manifest.signing.macosNotarize = false;
+        m_manifest.signing.winPfxPath    = QString();
+        m_manifest.signing.linuxGpgKey   = QString();
+    } else {
+        // Profile identity overrides manifest only when manifest field is empty
+        if (m_manifest.signing.macosSigner.isEmpty() && !m_activeProfile.macosSigningId.isEmpty())
+            m_manifest.signing.macosSigner = m_activeProfile.macosSigningId;
+        if (m_manifest.signing.winPfxPath.isEmpty() && !m_activeProfile.windowsSigningCert.isEmpty())
+            m_manifest.signing.winPfxPath  = m_activeProfile.windowsSigningCert;
+        if (m_manifest.signing.linuxGpgKey.isEmpty() && !m_activeProfile.linuxGpgKeyId.isEmpty())
+            m_manifest.signing.linuxGpgKey = m_activeProfile.linuxGpgKeyId;
     }
 
     // ── Assemble backend queue ─────────────────────────────────────────────
@@ -185,6 +227,17 @@ void BuildPanel::onBuildClicked()
         .arg(m_backendQueue.size() == 1
              ? m_backendQueue[0]->displayName()
              : QString("%1 platforms").arg(m_backendQueue.size())));
+
+    // Log effective signing mode so the developer can see what actually runs
+    if (m_activeProfile.skipSigning)
+        m_log->appendPlainText("Signing:  DISABLED (profile: skip signing)");
+    else if (m_activeProfile.devSignMode)
+        m_log->appendPlainText("Signing:  Ad-hoc dev (profile: codesign --sign -)");
+    else if (!m_manifest.signing.macosSigner.isEmpty())
+        m_log->appendPlainText(QString("Signing:  %1").arg(m_manifest.signing.macosSigner));
+    else
+        m_log->appendPlainText("Signing:  none (unsigned)");
+
     m_log->appendPlainText("");
 
     setBuildRunning(true);
@@ -414,7 +467,7 @@ void BuildPanel::buildUi()
         auto *hbox = new QHBoxLayout(grp);
 
         m_chkMacos   = new QCheckBox("macOS (.dmg)",            grp);
-        m_chkWindows = new QCheckBox("Windows (.exe via NSIS)", grp);
+        m_chkWindows = new QCheckBox("Windows (.zip installer package)", grp);
         m_chkLinux   = new QCheckBox("Linux (.deb / AppImage)", grp);
 
         m_chkMacos->setChecked(true);
@@ -439,6 +492,12 @@ void BuildPanel::buildUi()
         hbox->addWidget(m_btnBrowse);
         vbox->addWidget(grp);
     }
+
+    // ── Signing status strip (read-only; updated by applyProfile()) ──────
+    m_signingModeLabel = new QLabel("—  Signing: no profile active — using manifest signing block", this);
+    m_signingModeLabel->setObjectName("hintLabel");
+    m_signingModeLabel->setWordWrap(true);
+    vbox->addWidget(m_signingModeLabel);
 
     // ── Build button + Test button + progress ─────────────────────────────
     {
@@ -483,7 +542,17 @@ void BuildPanel::buildUi()
 
     // ── Connections ───────────────────────────────────────────────────────
     connect(m_btnBrowse, &QPushButton::clicked, this, &BuildPanel::onBrowseOutput);
-    connect(m_btnBuild,  &QPushButton::clicked, this, &BuildPanel::onBuildClicked);
+    // Build button emits buildRequested() — StudioMainWindow::onBuildStart() handles
+    // it and calls collectEditors() before calling startBuild(), ensuring the active
+    // editor values are always flushed into the manifest before validation runs.
+    connect(m_btnBuild,  &QPushButton::clicked, this, [this]() {
+        // If already running, treat as a cancel request directly
+        if (m_buildThread && m_buildThread->isRunning()) {
+            onBuildClicked();
+        } else {
+            emit buildRequested();
+        }
+    });
     connect(m_btnTest,   &QPushButton::clicked, this, &BuildPanel::onTestInstaller);
 }
 

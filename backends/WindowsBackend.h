@@ -2,20 +2,27 @@
 #include "BuildBackend.h"
 
 /*
- * WindowsBackend — generates a NSIS installer script (.nsi) from a Manifest
- * and optionally compiles it to a .exe using makensis.
+ * WindowsBackend — packages a Windows installer using the Mcaster1 runtime.
  *
- * Phase 1: generates the .nsi script (human-readable, fully usable).
- * Phase 2: auto-compile via makensis if available.
+ * Output structure (staged, then zipped):
+ *   <output-dir>/<Publisher>-<Name>-<Version>-win64-setup/
+ *     manifest.mis             — project manifest (read by Mcaster1Installer.exe)
+ *     payload/                 — application files (copied from project payload/)
+ *     Mcaster1Installer.exe    — bundled runtime installer (if found)
+ *     LICENSE.txt              — licence file (if declared in manifest)
  *
- * Output: <output-dir>/<publisher>-<name>-<version>-win64-setup.exe
- *         (or <publisher>-<name>-<version>-win64-setup.nsi if makensis absent)
+ * The staged directory is also zipped to produce:
+ *   <output-dir>/<Publisher>-<Name>-<Version>-win64-setup.zip
+ *
+ * No third-party compiler (NSIS, Inno Setup, WiX etc.) is required.
+ * We import .nsi / .iss files only as a conversion step — we never invoke
+ * makensis.exe or iscc.exe to compile them.
  */
 class WindowsBackend : public BuildBackend
 {
 public:
     QString platform()    const override { return "windows"; }
-    QString displayName() const override { return "Windows (.exe NSIS)"; }
+    QString displayName() const override { return "Windows Installer Package"; }
 
     QStringList validate(const Manifest &m, const QString &projectDir) const override;
 
@@ -28,6 +35,14 @@ public:
     QString outputFilename(const Manifest &m) const override;
 
 private:
-    QString generateNsiScript(const Manifest &m, const QString &projectDir) const;
-    bool    compileMakensis(const QString &nsiPath, const QString &exePath) const;
+    // Locate the Windows runtime installer binary.
+    // Searches relative to applicationDirPath() and the runtime/build/ tree.
+    QString findRuntimeExe() const;
+
+    // Copy src directory tree into dst, creating dst if needed.
+    bool copyDir(const QString &src, const QString &dst) const;
+
+    // Create a zip archive of srcDir at zipPath using the system zip command.
+    bool zipDir(const QString &srcDir, const QString &zipPath,
+                const ProgressFn &progress) const;
 };

@@ -1,0 +1,374 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# DevSuite.mis  — Mcaster1 Install System  ·  Enterprise Multi-App Example
+#
+# PURPOSE
+#   Demonstrates a complex, enterprise-grade installer with multiple
+#   application groups (three distinct deliverables in one package),
+#   full code signing on all three platforms, Windows registry depth,
+#   Linux GPG-signed packages, and both before- and after-install hooks.
+#
+# COVERS
+#   • 3 app-groups: IDE plugin, CLI tools, documentation server
+#   • 8 components with inter-component dependencies
+#   • All 3 platforms (macos, windows, linux)
+#   • Full signing block: macOS Developer ID + notarize, Windows PFX + timestamp,
+#     Linux GPG
+#   • Windows HKLM + HKCU + COM registration pattern
+#   • before-install + after-install + after-uninstall custom actions
+#   • Service / daemon registration (launchd on macOS, systemd on Linux,
+#     SC on Windows) via custom-actions
+#
+# BUILD
+#   All platforms (no signing):  miscc --build-file=DevSuite.mis --no-sign
+#   macOS release (signed):      miscc --build-file=DevSuite.mis --platform=macos
+#   Windows release (signed):    miscc --build-file=DevSuite.mis --platform=windows
+#   Linux .deb + .rpm:           miscc --build-file=DevSuite.mis --platform=linux
+# ──────────────────────────────────────────────────────────────────────────────
+
+format: mis/1
+
+# ── Application metadata ──────────────────────────────────────────────────────
+app:
+  name:        "DevSuite"
+  version:     "3.2.1"
+  publisher:   "Foundry Labs"
+  description: "An integrated developer toolkit: IDE plugin, CLI toolchain, and live documentation server."
+  url:         "https://foundrylabs.example.com/devsuite"
+  support-url: "https://foundrylabs.example.com/support"
+  identifier:  "com.foundrylabs.devsuite"
+  icon:        "resources/devsuite.icns"
+  license:     "LICENSE.txt"
+
+# ── Default install directories ───────────────────────────────────────────────
+defaults:
+  install-dir:
+    macos:   "/Applications/Foundry Labs/DevSuite"
+    windows: "C:\\Program Files\\Foundry Labs\\DevSuite"
+    linux:   "/opt/foundrylabs/devsuite"
+  require-admin:      true
+  allow-custom-dir:   true
+  launch-after:       false
+  create-uninstaller: true
+
+# ── Installer wizard theme ────────────────────────────────────────────────────
+theme:
+  banner-image:    "resources/banner.png"
+  sidepanel-image: "resources/sidepanel.png"
+  accent-color:    "#f05a28"
+  background:      "#1e1e2e"
+  dark-mode:       true
+
+# ── Code signing ──────────────────────────────────────────────────────────────
+signing:
+  macos-signer:   "Developer ID Application: Foundry Labs Inc (A1B2C3D4E5)"
+  macos-team-id:  "A1B2C3D4E5"
+  macos-hardened: true
+  macos-notarize: true
+  macos-profile:  "foundry-notary"
+  win-pfx-path:   "certs/foundry-labs-codesign.pfx"
+  win-timestamp:  "http://timestamp.sectigo.com"
+  linux-gpg-key:  "B4C2E1D9F3A08712"
+  linux-sign-debs: true
+
+# ── Application groups ────────────────────────────────────────────────────────
+app-groups:
+  - id:          ide-plugin
+    name:        "IDE Plugin"
+    description: "VS Code / JetBrains plugin for DevSuite integration."
+
+  - id:          cli-tools
+    name:        "CLI Toolchain"
+    description: "Command-line build, lint, test, and deploy tools."
+
+  - id:          doc-server
+    name:        "Documentation Server"
+    description: "Local HTTP server serving live project documentation."
+
+# ── Prerequisites ─────────────────────────────────────────────────────────────
+prerequisites:
+  - id:       node20
+    name:     "Node.js 20 LTS or later"
+    check:    "node --version 2>/dev/null | grep -E '^v(2[0-9]|[3-9][0-9])' > /dev/null && echo ok"
+    install:  "https://nodejs.org"
+    platforms: [macos, linux, windows]
+
+  - id:       macos-version
+    name:     "macOS 12.0 Monterey or later"
+    check:    "[ $(sw_vers -productVersion | cut -d. -f1) -ge 12 ] && echo ok"
+    install:  "https://support.apple.com/macos"
+    platforms: [macos]
+
+  - id:       vcredist2022
+    name:     "Visual C++ 2022 Redistributable"
+    check:    "reg query \"HKLM\\SOFTWARE\\Microsoft\\VisualStudio\\14.0\\VC\\Runtimes\\X64\" /v Version > nul 2>&1 && echo ok"
+    install:  "https://aka.ms/vs/17/release/vc_redist.x64.exe"
+    platforms: [windows]
+
+  - id:       libc6
+    name:     "GNU C Library 2.31+ (Debian/Ubuntu)"
+    check:    "ldd --version 2>&1 | awk 'NR==1{split($NF,v,\".\"); if(v[1]>=2 && v[2]>=31) print \"ok\"}'"
+    install:  "sudo apt-get update && sudo apt-get install -y libc6"
+    platforms: [linux]
+
+# ── Components ────────────────────────────────────────────────────────────────
+components:
+
+  # ── IDE Plugin ──────────────────────────────────────────────────────────────
+
+  - id:          vscode-ext
+    name:        "VS Code Extension"
+    description: "DevSuite extension for Visual Studio Code (code assist, build, debug)."
+    required:    false
+    selected:    true
+    app-group:   ide-plugin
+    depends:     [cli-core]
+    files:
+      - src: "payload/extensions/devsuite-vscode-3.2.1.vsix"
+        dst: "{install-dir}/extensions/devsuite-vscode-3.2.1.vsix"
+
+  - id:          jetbrains-ext
+    name:        "JetBrains Plugin"
+    description: "DevSuite plugin for IntelliJ IDEA, CLion, and WebStorm."
+    required:    false
+    selected:    false
+    app-group:   ide-plugin
+    depends:     [cli-core]
+    files:
+      - src: "payload/extensions/devsuite-jetbrains-3.2.1.jar"
+        dst: "{install-dir}/extensions/devsuite-jetbrains-3.2.1.jar"
+
+  # ── CLI Toolchain ────────────────────────────────────────────────────────────
+
+  - id:          cli-core
+    name:        "CLI Core (required)"
+    description: "devs binary, shared libraries and runtime data."
+    required:    true
+    selected:    true
+    app-group:   cli-tools
+    files:
+      - src: "payload/bin/devs"
+        dst: "{install-dir}/bin/devs"
+        chmod: "+x"
+        platforms: [macos, linux]
+      - src: "payload/bin/devs.exe"
+        dst: "{install-dir}/bin/devs.exe"
+        platforms: [windows]
+      - src: "payload/lib"
+        dst: "{install-dir}/lib"
+        dir: true
+      - src: "payload/share/devsuite"
+        dst: "{install-dir}/share/devsuite"
+        dir: true
+
+  - id:          cli-extras
+    name:        "Extended CLI Tools"
+    description: "devs-lint, devs-bench, devs-profile and devs-deploy utilities."
+    required:    false
+    selected:    true
+    app-group:   cli-tools
+    depends:     [cli-core]
+    files:
+      - src: "payload/bin/devs-lint"
+        dst: "{install-dir}/bin/devs-lint"
+        chmod: "+x"
+        platforms: [macos, linux]
+      - src: "payload/bin/devs-bench"
+        dst: "{install-dir}/bin/devs-bench"
+        chmod: "+x"
+        platforms: [macos, linux]
+      - src: "payload/bin/devs-lint.exe"
+        dst: "{install-dir}/bin/devs-lint.exe"
+        platforms: [windows]
+      - src: "payload/bin/devs-bench.exe"
+        dst: "{install-dir}/bin/devs-bench.exe"
+        platforms: [windows]
+
+  - id:          shell-completions
+    name:        "Shell Completions"
+    description: "Bash, Zsh, and Fish auto-completion scripts for the devs CLI."
+    required:    false
+    selected:    true
+    app-group:   cli-tools
+    depends:     [cli-core]
+    files:
+      - src: "payload/completions/devs.bash"
+        dst: "{install-dir}/completions/devs.bash"
+        platforms: [macos, linux]
+      - src: "payload/completions/devs.zsh"
+        dst: "{install-dir}/completions/_devs"
+        platforms: [macos, linux]
+      - src: "payload/completions/devs.fish"
+        dst: "{install-dir}/completions/devs.fish"
+        platforms: [macos, linux]
+
+  # ── Documentation Server ─────────────────────────────────────────────────────
+
+  - id:          docserver-core
+    name:        "Documentation Server (required)"
+    description: "Node.js-based HTTP server for live local project documentation."
+    required:    true
+    selected:    true
+    app-group:   doc-server
+    depends:     [cli-core]
+    files:
+      - src: "payload/docserver"
+        dst: "{install-dir}/docserver"
+        dir: true
+
+  - id:          docserver-themes
+    name:        "Documentation Themes"
+    description: "Built-in dark, light, and high-contrast themes for the doc server."
+    required:    false
+    selected:    true
+    app-group:   doc-server
+    depends:     [docserver-core]
+    files:
+      - src: "payload/docserver-themes"
+        dst: "{install-dir}/docserver-themes"
+        dir: true
+
+  - id:          docserver-examples
+    name:        "Example Projects"
+    description: "Sample DevSuite projects with pre-generated documentation."
+    required:    false
+    selected:    false
+    app-group:   doc-server
+    depends:     [docserver-core]
+    files:
+      - src: "payload/examples"
+        dst: "{install-dir}/examples"
+        dir: true
+
+# ── Shortcuts ─────────────────────────────────────────────────────────────────
+shortcuts:
+  - name:   "DevSuite CLI Reference"
+    target: "http://127.0.0.1:7800"
+    type:   url
+
+  - name:   "DevSuite Documentation"
+    target: "{install-dir}/docserver/docs/index.html"
+    type:   url
+
+# ── Windows Registry ──────────────────────────────────────────────────────────
+registry:
+  - hive:  HKLM
+    key:   "Software\\Foundry Labs\\DevSuite"
+    value: "InstallPath"
+    data:  "{install-dir}"
+    type:  REG_SZ
+
+  - hive:  HKLM
+    key:   "Software\\Foundry Labs\\DevSuite"
+    value: "Version"
+    data:  "3.2.1"
+    type:  REG_SZ
+
+  - hive:  HKLM
+    key:   "Software\\Foundry Labs\\DevSuite"
+    value: "NodeRequired"
+    data:  "20"
+    type:  REG_DWORD
+
+  - hive:  HKLM
+    key:   "SYSTEM\\CurrentControlSet\\Control\\Session Manager\\Environment"
+    value: "DEVSUITE_HOME"
+    data:  "{install-dir}"
+    type:  REG_EXPAND_SZ
+
+  - hive:  HKCU
+    key:   "Software\\Foundry Labs\\DevSuite\\Preferences"
+    value: "FirstRun"
+    data:  "1"
+    type:  REG_DWORD
+
+  - hive:  HKCU
+    key:   "Software\\Foundry Labs\\DevSuite\\Preferences"
+    value: "Theme"
+    data:  "dark"
+    type:  REG_SZ
+
+# ── Custom actions ────────────────────────────────────────────────────────────
+custom-actions:
+
+  # macOS: make CLI tools available system-wide via symlink
+  - id:      symlink-cli
+    trigger: after-install
+    type:    shell
+    command: "ln -sf \"{install-dir}/bin/devs\" /usr/local/bin/devs 2>/dev/null || true"
+    platforms: [macos]
+
+  # macOS: install shell completion for the current user
+  - id:      install-zsh-completion
+    trigger: after-install
+    type:    shell
+    command: "mkdir -p ~/.zsh/completion && cp \"{install-dir}/completions/_devs\" ~/.zsh/completion/ && echo 'fpath=(~/.zsh/completion $fpath)' >> ~/.zshrc 2>/dev/null || true"
+    platforms: [macos]
+
+  # macOS: remove quarantine flag (critical for downloaded binaries)
+  - id:      quarantine-remove
+    trigger: after-install
+    type:    shell
+    command: "xattr -dr com.apple.quarantine \"{install-dir}\" 2>/dev/null || true"
+    platforms: [macos]
+
+  # macOS: register doc server as a launchd agent (auto-start on login)
+  - id:      register-launchd
+    trigger: after-install
+    type:    shell
+    command: "cp \"{install-dir}/docserver/com.foundrylabs.devsuite.docserver.plist\" ~/Library/LaunchAgents/ && launchctl load ~/Library/LaunchAgents/com.foundrylabs.devsuite.docserver.plist 2>/dev/null || true"
+    platforms: [macos]
+
+  # macOS: unload launchd agent on uninstall
+  - id:      unregister-launchd
+    trigger: before-uninstall
+    type:    shell
+    command: "launchctl unload ~/Library/LaunchAgents/com.foundrylabs.devsuite.docserver.plist 2>/dev/null || true && rm -f ~/Library/LaunchAgents/com.foundrylabs.devsuite.docserver.plist"
+    platforms: [macos]
+
+  # Linux: add CLI to PATH via /etc/profile.d
+  - id:      add-to-path
+    trigger: after-install
+    type:    shell
+    command: "echo 'export PATH=\"{install-dir}/bin:$PATH\"' > /etc/profile.d/devsuite.sh && chmod 644 /etc/profile.d/devsuite.sh"
+    platforms: [linux]
+
+  # Linux: install zsh completion into system completions dir
+  - id:      install-zsh-completion-linux
+    trigger: after-install
+    type:    shell
+    command: "install -m 644 \"{install-dir}/completions/_devs\" /usr/share/zsh/vendor-completions/ 2>/dev/null || true"
+    platforms: [linux]
+
+  # Linux: register doc server as a systemd user service
+  - id:      register-systemd
+    trigger: after-install
+    type:    shell
+    command: "cp \"{install-dir}/docserver/devsuite-docserver.service\" /etc/systemd/user/ && systemctl --user daemon-reload && systemctl --user enable devsuite-docserver 2>/dev/null || true"
+    platforms: [linux]
+
+  # Linux: stop and disable systemd service on uninstall
+  - id:      unregister-systemd
+    trigger: before-uninstall
+    type:    shell
+    command: "systemctl --user stop devsuite-docserver 2>/dev/null; systemctl --user disable devsuite-docserver 2>/dev/null; rm -f /etc/systemd/user/devsuite-docserver.service; systemctl --user daemon-reload 2>/dev/null || true"
+    platforms: [linux]
+
+  # Windows: register doc server as a Windows Service
+  - id:      register-winservice
+    trigger: after-install
+    type:    shell
+    command: "sc.exe create DevSuiteDocServer binPath= \"\\\"{install-dir}\\\\docserver\\\\devsuite-docserver.exe\\\"\" DisplayName= \"DevSuite Documentation Server\" start= auto && sc.exe start DevSuiteDocServer"
+    platforms: [windows]
+
+  # Windows: stop and remove the Windows Service on uninstall
+  - id:      unregister-winservice
+    trigger: before-uninstall
+    type:    shell
+    command: "sc.exe stop DevSuiteDocServer & sc.exe delete DevSuiteDocServer"
+    platforms: [windows]
+
+# ── Target platforms ──────────────────────────────────────────────────────────
+targets:
+  - macos
+  - windows
+  - linux

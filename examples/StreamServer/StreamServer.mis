@@ -1,0 +1,293 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# StreamServer.mis  — Mcaster1 Install System  ·  Media Server Service Example
+#
+# PURPOSE
+#   A real-world pattern for installing a background audio/media streaming
+#   server that runs as a persistent daemon (launchd / systemd / Windows
+#   Service) and ships a separate Qt6 GUI management app.
+#
+#   This pattern mirrors how Mcaster1DNAS is packaged but is useful as a
+#   template for any server+GUI pairing.
+#
+# COVERS
+#   • 2 app-groups: server daemon + GUI control panel
+#   • macOS + Linux targets (no Windows in this example)
+#   • Service registration / unregistration via before/after hooks
+#   • SSL certificate pre-seeding
+#   • Log directory creation before install
+#   • Post-install codesign verify on macOS
+#   • dev-mode signing (ad-hoc for local testing)
+#
+# BUILD
+#   Dev build (unsigned):  miscc --build-file=StreamServer.mis --no-sign
+#   macOS release:         miscc --build-file=StreamServer.mis --platform=macos
+#   Linux .deb:            miscc --build-file=StreamServer.mis --platform=linux
+# ──────────────────────────────────────────────────────────────────────────────
+
+format: mis/1
+
+# ── Application metadata ──────────────────────────────────────────────────────
+app:
+  name:        "StreamServer"
+  version:     "1.5.0"
+  publisher:   "Wave Audio"
+  description: "A high-performance audio streaming server with ICY metadata support and a native macOS/Linux control panel."
+  url:         "https://waveaudio.example.com/streamserver"
+  support-url: "https://github.com/example/streamserver/issues"
+  identifier:  "com.waveaudio.streamserver"
+  icon:        "payload/StreamServer.app/Contents/Resources/streamserver.icns"
+  license:     "LICENSE.txt"
+
+# ── Default install directories ───────────────────────────────────────────────
+defaults:
+  install-dir:
+    macos:   "/Applications/StreamServer"
+    windows: "C:\\Program Files\\Wave Audio\\StreamServer"
+    linux:   "/opt/waveaudio/streamserver"
+  require-admin:      true
+  allow-custom-dir:   true
+  launch-after:       true
+  create-uninstaller: true
+
+# ── Installer wizard theme ────────────────────────────────────────────────────
+theme:
+  accent-color: "#00c9ff"
+  background:   "#0d1117"
+  dark-mode:    true
+
+# ── Code signing ──────────────────────────────────────────────────────────────
+# For dev/CI builds: leave macos-signer blank and pass --no-sign or --dev-sign
+# to miscc.  The signing block is only used for release builds.
+signing:
+  macos-signer:   ""
+  macos-team-id:  ""
+  macos-hardened: true
+  macos-notarize: false
+  linux-gpg-key:  ""
+  linux-sign-debs: false
+
+# ── Application groups ────────────────────────────────────────────────────────
+app-groups:
+  - id:          server-daemon
+    name:        "StreamServer Daemon"
+    description: "The background streaming server process (runs as a service)."
+
+  - id:          control-panel
+    name:        "Control Panel"
+    description: "Native Qt6 GUI for managing the StreamServer daemon."
+
+# ── Prerequisites ─────────────────────────────────────────────────────────────
+prerequisites:
+  - id:       macos-version
+    name:     "macOS 12.0 Monterey or later"
+    check:    "[ $(sw_vers -productVersion | cut -d. -f1) -ge 12 ] && echo ok"
+    install:  "https://support.apple.com/macos"
+    platforms: [macos]
+
+  - id:       openssl
+    name:     "OpenSSL 3.x (for HTTPS streaming)"
+    check:    "openssl version 2>/dev/null | grep -q 'OpenSSL 3' && echo ok"
+    install:  "brew install openssl@3"
+    platforms: [macos]
+
+  - id:       libc6-linux
+    name:     "GNU C Library 2.31+ (Ubuntu 20.04+)"
+    check:    "dpkg -s libc6 2>/dev/null | grep -q 'Status: install ok' && echo ok"
+    install:  "sudo apt-get install -y libc6"
+    platforms: [linux]
+
+  - id:       systemd-linux
+    name:     "systemd (for service management)"
+    check:    "systemctl --version > /dev/null 2>&1 && echo ok"
+    install:  "https://systemd.io"
+    platforms: [linux]
+
+# ── Components ────────────────────────────────────────────────────────────────
+components:
+
+  # ── Server daemon ─────────────────────────────────────────────────────────
+
+  - id:          server-binary
+    name:        "Server Binary (required)"
+    description: "The streamserver daemon binary and its shared libraries."
+    required:    true
+    selected:    true
+    app-group:   server-daemon
+    files:
+      - src: "payload/bin/streamserver"
+        dst: "{install-dir}/bin/streamserver"
+        chmod: "+x"
+        platforms: [macos, linux]
+
+  - id:          server-config
+    name:        "Default Server Configuration"
+    description: "Pre-configured YAML config (HTTP :8000, HTTPS :8443, localhost binding)."
+    required:    false
+    selected:    true
+    app-group:   server-daemon
+    depends:     [server-binary]
+    files:
+      - src: "payload/streamserver.yaml"
+        dst: "{install-dir}/streamserver.yaml"
+      - src: "payload/streamserver-service.yaml"
+        dst: "{install-dir}/streamserver-service.yaml"
+
+  - id:          server-ssl
+    name:        "Local SSL Certificate"
+    description: "Self-signed certificate for localhost HTTPS (port 8443)."
+    required:    false
+    selected:    true
+    app-group:   server-daemon
+    depends:     [server-binary]
+    files:
+      - src: "payload/ssl/localhost.pem"
+        dst: "{install-dir}/ssl/localhost.pem"
+
+  - id:          server-webfiles
+    name:        "Web & Admin Interface"
+    description: "XSL/HTML templates for the web status page and admin panel."
+    required:    false
+    selected:    true
+    app-group:   server-daemon
+    depends:     [server-binary]
+    files:
+      - src: "payload/web"
+        dst: "{install-dir}/web"
+        dir: true
+      - src: "payload/admin"
+        dst: "{install-dir}/admin"
+        dir: true
+
+  - id:          server-logdir
+    name:        "Log Directory"
+    description: "Pre-created logs directory with correct permissions."
+    required:    true
+    selected:    true
+    app-group:   server-daemon
+    depends:     [server-binary]
+    files:
+      - src: "payload/logs/.keep"
+        dst: "{install-dir}/logs/.keep"
+
+  # ── Control Panel ──────────────────────────────────────────────────────────
+
+  - id:          gui-app
+    name:        "Control Panel (Qt6 GUI)"
+    description: "Native macOS/Linux application for managing StreamServer."
+    required:    false
+    selected:    true
+    app-group:   control-panel
+    depends:     [server-binary]
+    files:
+      - src: "payload/StreamServer.app"
+        dst: "{install-dir}/StreamServer.app"
+        dir: true
+        platforms: [macos]
+      - src: "payload/StreamServer"
+        dst: "{install-dir}/StreamServer"
+        chmod: "+x"
+        platforms: [linux]
+
+  - id:          server-docs
+    name:        "Documentation"
+    description: "HTML reference guide, API docs, and quick-start walkthrough."
+    required:    false
+    selected:    true
+    app-group:   control-panel
+    depends:     [server-binary]
+    files:
+      - src: "payload/docs"
+        dst: "{install-dir}/docs"
+        dir: true
+
+# ── Shortcuts ─────────────────────────────────────────────────────────────────
+shortcuts:
+  - name:   "StreamServer"
+    target: "{install-dir}/StreamServer.app"
+    type:   app
+
+  - name:   "StreamServer Web UI"
+    target: "http://127.0.0.1:8000/status.xsl"
+    type:   url
+
+  - name:   "StreamServer Documentation"
+    target: "{install-dir}/docs/index.html"
+    type:   url
+
+# ── Custom actions ────────────────────────────────────────────────────────────
+custom-actions:
+
+  # Create log directory before any files land
+  - id:      create-logdir
+    trigger: before-install
+    type:    shell
+    command: "mkdir -p \"{install-dir}/logs\" && chmod 755 \"{install-dir}/logs\""
+    platforms: [macos, linux]
+
+  # macOS: remove quarantine so the binary can execute
+  - id:      quarantine-remove
+    trigger: after-install
+    type:    shell
+    command: "xattr -dr com.apple.quarantine \"{install-dir}\" 2>/dev/null || true"
+    platforms: [macos]
+
+  # macOS: verify codesigning (informational — fails gracefully for dev builds)
+  - id:      codesign-verify
+    trigger: after-install
+    type:    shell
+    command: "codesign --verify --deep --strict \"{install-dir}/StreamServer.app\" 2>/dev/null && echo 'Codesign: OK' || echo 'Codesign: WARNING — ad-hoc or unsigned build'"
+    platforms: [macos]
+
+  # macOS: install and load a launchd agent so the server starts on login
+  - id:      register-launchd
+    trigger: after-install
+    type:    shell
+    command: "mkdir -p ~/Library/LaunchAgents && cp \"{install-dir}/payload/com.waveaudio.streamserver.plist\" ~/Library/LaunchAgents/ && launchctl load ~/Library/LaunchAgents/com.waveaudio.streamserver.plist 2>/dev/null || true"
+    platforms: [macos]
+
+  # macOS: unload launchd agent before uninstall
+  - id:      unregister-launchd
+    trigger: before-uninstall
+    type:    shell
+    command: "launchctl unload ~/Library/LaunchAgents/com.waveaudio.streamserver.plist 2>/dev/null; rm -f ~/Library/LaunchAgents/com.waveaudio.streamserver.plist"
+    platforms: [macos]
+
+  # Linux: set correct execute permission
+  - id:      fix-permissions
+    trigger: after-install
+    type:    shell
+    command: "chmod +x \"{install-dir}/bin/streamserver\" && chmod 755 \"{install-dir}/logs\""
+    platforms: [linux]
+
+  # Linux: add to PATH for all users
+  - id:      add-to-path-linux
+    trigger: after-install
+    type:    shell
+    command: "echo 'export PATH=\"{install-dir}/bin:$PATH\"' > /etc/profile.d/streamserver.sh && chmod 644 /etc/profile.d/streamserver.sh"
+    platforms: [linux]
+
+  # Linux: install and enable systemd service
+  - id:      register-systemd
+    trigger: after-install
+    type:    shell
+    command: "cp \"{install-dir}/payload/streamserver.service\" /etc/systemd/system/ && systemctl daemon-reload && systemctl enable streamserver && systemctl start streamserver 2>/dev/null || true"
+    platforms: [linux]
+
+  # Linux: stop and disable systemd service before uninstall
+  - id:      unregister-systemd
+    trigger: before-uninstall
+    type:    shell
+    command: "systemctl stop streamserver 2>/dev/null; systemctl disable streamserver 2>/dev/null; rm -f /etc/systemd/system/streamserver.service; systemctl daemon-reload 2>/dev/null || true"
+    platforms: [linux]
+
+  # Linux: update shared library cache
+  - id:      update-ldconfig
+    trigger: after-install
+    type:    shell
+    command: "ldconfig 2>/dev/null || true"
+    platforms: [linux]
+
+# ── Target platforms ──────────────────────────────────────────────────────────
+targets:
+  - macos
+  - linux

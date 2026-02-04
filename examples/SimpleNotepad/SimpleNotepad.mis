@@ -1,0 +1,155 @@
+# ──────────────────────────────────────────────────────────────────────────────
+# SimpleNotepad.mis  — Mcaster1 Install System  ·  Minimal Example
+#
+# PURPOSE
+#   The simplest valid .mis manifest you can write.  Use this as a starting
+#   point when building your first installer.  Every required field is present;
+#   optional fields are kept to a minimum so the file stays easy to read.
+#
+# COVERS
+#   • Single app-group with one required component
+#   • macOS app bundle + Windows EXE (two-platform)
+#   • Platform-filtered file entries
+#   • One shortcut per platform
+#   • Basic pre-install prerequisite check
+#
+# BUILD
+#   macOS  :  miscc --build-file=SimpleNotepad.mis --platform=macos
+#   Windows:  miscc --build-file=SimpleNotepad.mis --platform=windows
+#   Both   :  miscc --build-file=SimpleNotepad.mis
+# ──────────────────────────────────────────────────────────────────────────────
+
+format: mis/1
+
+# ── Application metadata ──────────────────────────────────────────────────────
+app:
+  name:        "SimpleNotepad"
+  version:     "1.0.0"
+  publisher:   "Example Software"
+  description: "A minimal plain-text editor for macOS and Windows."
+  url:         "https://example.com/simplenotepad"
+  support-url: "https://example.com/simplenotepad/support"
+  identifier:  "com.example.simplenotepad"
+  icon:        "resources/simplenotepad.icns"
+  license:     "LICENSE.txt"
+
+# ── Default install directories ───────────────────────────────────────────────
+defaults:
+  install-dir:
+    macos:   "/Applications/SimpleNotepad"
+    windows: "C:\\Program Files\\Example Software\\SimpleNotepad"
+    linux:   "/opt/simplenotepad"
+  require-admin:      true
+  allow-custom-dir:   true
+  launch-after:       true
+  create-uninstaller: true
+
+# ── Installer wizard theme ────────────────────────────────────────────────────
+theme:
+  accent-color: "#4a90d9"
+  background:   "#ffffff"
+  dark-mode:    false
+
+# ── Application groups ────────────────────────────────────────────────────────
+app-groups:
+  - id:          editor
+    name:        "SimpleNotepad Editor"
+    description: "The text editor application."
+
+# ── Prerequisites ─────────────────────────────────────────────────────────────
+prerequisites:
+  - id:       macos-version
+    name:     "macOS 11 Big Sur or later"
+    check:    "[ $(sw_vers -productVersion | cut -d. -f1) -ge 11 ] && echo ok"
+    install:  "https://support.apple.com/macos"
+    platforms: [macos]
+
+  - id:       vcredist2022
+    name:     "Visual C++ 2022 Redistributable"
+    check:    "reg query HKLM\\SOFTWARE\\Microsoft\\VisualStudio\\14.0\\VC\\Runtimes\\X64 /v Version > nul 2>&1 && echo ok"
+    install:  "https://aka.ms/vs/17/release/vc_redist.x64.exe"
+    platforms: [windows]
+
+# ── Components ────────────────────────────────────────────────────────────────
+components:
+  - id:          core
+    name:        "SimpleNotepad (required)"
+    description: "Main application binary and default configuration."
+    required:    true
+    selected:    true
+    app-group:   editor
+    files:
+      # macOS app bundle
+      - src: "payload/SimpleNotepad.app"
+        dst: "{install-dir}/SimpleNotepad.app"
+        dir: true
+        platforms: [macos]
+      # Windows executable + Qt runtime DLLs
+      - src: "payload/SimpleNotepad.exe"
+        dst: "{install-dir}/SimpleNotepad.exe"
+        platforms: [windows]
+      - src: "payload/Qt6Core.dll"
+        dst: "{install-dir}/Qt6Core.dll"
+        platforms: [windows]
+      - src: "payload/Qt6Widgets.dll"
+        dst: "{install-dir}/Qt6Widgets.dll"
+        platforms: [windows]
+      # Config file — all platforms
+      - src: "payload/simplenotepad.conf"
+        dst: "{install-dir}/simplenotepad.conf"
+
+  - id:          docs
+    name:        "Documentation"
+    description: "Quick-start guide and keyboard shortcut reference."
+    required:    false
+    selected:    true
+    app-group:   editor
+    depends:     [core]
+    files:
+      - src: "payload/docs/QuickStart.html"
+        dst: "{install-dir}/docs/QuickStart.html"
+      - src: "payload/docs/Shortcuts.html"
+        dst: "{install-dir}/docs/Shortcuts.html"
+
+# ── Shortcuts ─────────────────────────────────────────────────────────────────
+shortcuts:
+  - name:   "SimpleNotepad"
+    target: "{install-dir}/SimpleNotepad.app"
+    type:   app
+
+  - name:   "SimpleNotepad Quick Start"
+    target: "{install-dir}/docs/QuickStart.html"
+    type:   url
+
+# ── Windows Registry ──────────────────────────────────────────────────────────
+registry:
+  - hive:  HKLM
+    key:   "Software\\Example Software\\SimpleNotepad"
+    value: "InstallPath"
+    data:  "{install-dir}"
+    type:  REG_SZ
+
+  - hive:  HKLM
+    key:   "Software\\Example Software\\SimpleNotepad"
+    value: "Version"
+    data:  "1.0.0"
+    type:  REG_SZ
+
+  - hive:  HKCU
+    key:   "Software\\Example Software\\SimpleNotepad\\Settings"
+    value: "FirstRun"
+    data:  "1"
+    type:  REG_DWORD
+
+# ── Custom actions ────────────────────────────────────────────────────────────
+custom-actions:
+  - id:      quarantine-remove
+    trigger: after-install
+    type:    shell
+    command: "xattr -dr com.apple.quarantine \"{install-dir}/SimpleNotepad.app\" 2>/dev/null || true"
+    platforms: [macos]
+
+# ── Target platforms ──────────────────────────────────────────────────────────
+targets:
+  - macos
+  - windows

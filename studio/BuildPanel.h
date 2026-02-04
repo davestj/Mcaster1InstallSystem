@@ -22,6 +22,7 @@
 #include <QList>
 #include "Manifest.h"
 #include "BuildBackend.h"
+#include "BuilderProfile.h"
 
 class QCheckBox;
 class QLineEdit;
@@ -70,7 +71,18 @@ public:
     // Called by StudioMainWindow toolbar / menu Build action
     void startBuild(const Manifest &m, const QString &projectDir);
 
+    // Apply active builder profile — stores signing mode for the next build.
+    // Called by StudioMainWindow::onBuildStart() with the currently selected profile.
+    // skipSigning / devSignMode overrides are applied to the manifest COPY at
+    // build-time only; the .mis file on disk is never mutated.
+    void applyProfile(const BuilderProfile &profile);
+
 signals:
+    // Emitted when the user clicks "Build Installer" inside the panel.
+    // StudioMainWindow connects this to onBuildStart() so editors are always
+    // collected before the build pipeline runs.
+    void buildRequested();
+
     void buildLog(const QString &line);
     void buildProgress(int pct, const QString &msg);
     void buildFinished(bool ok, const QString &outputPath);
@@ -101,11 +113,15 @@ private:
     QLabel       *m_statusLbl  = nullptr;
     QPlainTextEdit *m_log      = nullptr;
 
+    // ── Widgets ──────────────────────────────────────────────────────────
+    QLabel       *m_signingModeLabel = nullptr;   // read-only signing status strip
+
     // ── Build state ───────────────────────────────────────────────────────
     QThread *m_buildThread = nullptr;
 
-    Manifest m_manifest;
-    QString  m_projectDir;
+    Manifest       m_manifest;
+    QString        m_projectDir;
+    BuilderProfile m_activeProfile;  // signing mode overrides applied at build-time
 
     QList<BuildBackend *> m_backendQueue;   // owned; deleted in cleanupQueue()
     int                   m_queueIndex = 0;

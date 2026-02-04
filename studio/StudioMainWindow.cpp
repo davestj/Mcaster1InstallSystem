@@ -87,8 +87,14 @@ StudioMainWindow::StudioMainWindow(QWidget *parent)
     m_clockTimer->start();
     onClockTick();   // populate immediately
 
-    // Start with a blank project
-    m_manifest = Manifest::newProject();
+    // Start with one blank project open
+    {
+        OpenProject op;
+        op.manifest = Manifest::newProject();
+        op.tempId   = QUuid::createUuid().toString(QUuid::WithoutBraces);
+        m_openProjects.append(op);
+        m_activeIdx = 0;
+    }
     loadEditors();
     updateWindowTitle();
     updateProjectInfoLabel();
@@ -100,32 +106,46 @@ StudioMainWindow::StudioMainWindow(QWidget *parent)
 // ── Public ────────────────────────────────────────────────────────────────────
 void StudioMainWindow::openProject(const QString &path)
 {
-    if (!confirmDiscard()) return;
+    // Already open? Just switch to it.
+    for (int i = 0; i < m_openProjects.size(); ++i) {
+        if (m_openProjects[i].path == path) {
+            switchToProject(i);
+            return;
+        }
+    }
 
+    OpenProject op;
     QString err;
-    if (!m_manifest.load(path, &err)) {
+    if (!op.manifest.load(path, &err)) {
         QMessageBox::warning(this, "Open Failed",
             QString("Could not load project:\n%1\n\n%2").arg(path, err));
         return;
     }
-    m_projectPath = path;
-    m_dirty       = false;
+    op.path  = path;
+    op.dirty = false;
+
+    autoSaveActive();   // silently save current before switching
+    m_openProjects.append(op);
+    m_activeIdx = m_openProjects.size() - 1;
     loadEditors();
     updateWindowTitle();
     updateProjectInfoLabel();
     associateProjectWithProfile(path);
     m_eventLog->appendInfo(QString("Opened project: %1").arg(path));
-
     statusBar()->showMessage(QString("Opened: %1").arg(path), 4000);
 }
 
 // ── Slots ─────────────────────────────────────────────────────────────────────
 void StudioMainWindow::onNewProject()
 {
-    if (!confirmDiscard()) return;
-    m_manifest    = Manifest::newProject();
-    m_projectPath.clear();
-    m_dirty       = false;
+    OpenProject op;
+    op.manifest = Manifest::newProject();
+    op.tempId   = QUuid::createUuid().toString(QUuid::WithoutBraces);
+    op.dirty    = false;
+
+    autoSaveActive();   // silently save current project before adding new one
+    m_openProjects.append(op);
+    m_activeIdx = m_openProjects.size() - 1;
     loadEditors();
     updateWindowTitle();
     updateProjectInfoLabel();
@@ -135,7 +155,6 @@ void StudioMainWindow::onNewProject()
 
 void StudioMainWindow::onOpenProject()
 {
-    if (!confirmDiscard()) return;
     QString path = QFileDialog::getOpenFileName(
         this, "Open Project",
         QDir::homePath(),
@@ -146,55 +165,67 @@ void StudioMainWindow::onOpenProject()
 
 void StudioMainWindow::onSaveProject()
 {
-    if (m_projectPath.isEmpty()) {
+    if (!hasActive()) return;
+    if (active().path.isEmpty()) {
         onSaveProjectAs();
         return;
     }
     collectEditors();
     QString err;
-    if (!m_manifest.save(m_projectPath, &err)) {
+    if (!active().manifest.save(active().path, &err)) {
         QMessageBox::critical(this, "Save Failed",
-            QString("Could not save:\n%1\n\n%2").arg(m_projectPath, err));
+            QString("Could not save:\n%1\n\n%2").arg(active().path, err));
         return;
     }
-    m_dirty = false;
+    active().dirty = false;
     updateWindowTitle();
-    m_eventLog->appendInfo(QString("Saved: %1").arg(m_projectPath));
-    statusBar()->showMessage(QString("Saved: %1").arg(m_projectPath), 3000);
-    associateProjectWithProfile(m_projectPath);
+    m_eventLog->appendInfo(QString("Saved: %1").arg(active().path));
+    statusBar()->showMessage(QString("Saved: %1").arg(active().path), 3000);
+    associateProjectWithProfile(active().path);
+    refreshSidebar();
 }
 
 void StudioMainWindow::onSaveProjectAs()
 {
+    if (!hasActive()) return;
+    const QString defaultName = sanitizeFilename(
+        active().manifest.app.name.isEmpty() ? "NewProject" : active().manifest.app.name);
     QString path = QFileDialog::getSaveFileName(
         this, "Save Project As",
-        m_projectPath.isEmpty()
-            ? QDir::homePath() + "/NewProject.mis"
-            : m_projectPath,
+        active().path.isEmpty()
+            ? QDir::homePath() + "/" + defaultName + ".mis"
+            : active().path,
         "Mcaster1 Install Spec (*.mis);;All files (*)");
 
     if (path.isEmpty()) return;
     if (!path.endsWith(".mis", Qt::CaseInsensitive))
         path += ".mis";
 
-    m_projectPath = path;
+    active().path = path;
     onSaveProject();
 }
 
 void StudioMainWindow::onBuildStart()
 {
+    if (!hasActive()) return;
     m_editorTabs->setCurrentWidget(m_build);
     collectEditors();
 
     updateHud(SvgIcons::kStatusBuilding, "Build in progress…");
     m_eventLog->appendBuild(
         QString("Starting build for %1 v%2")
-            .arg(m_manifest.app.name, m_manifest.app.version));
+            .arg(active().manifest.app.name, active().manifest.app.version));
 
-    m_build->startBuild(m_manifest,
-                        m_projectPath.isEmpty()
+    // Push the active builder profile's signing mode into the build panel.
+    // index 0 = "— no profile —"; indices 1..N = profiles[index-1].
+    const int pIdx = m_profileCombo ? m_profileCombo->currentIndex() - 1 : -1;
+    if (pIdx >= 0 && pIdx < m_profileManager.profiles().size())
+        m_build->applyProfile(m_profileManager.profiles().at(pIdx));
+
+    m_build->startBuild(active().manifest,
+                        active().path.isEmpty()
                             ? QDir::homePath()
-                            : QFileInfo(m_projectPath).absolutePath());
+                            : QFileInfo(active().path).absolutePath());
 }
 
 void StudioMainWindow::onImportNsis()
@@ -215,9 +246,15 @@ void StudioMainWindow::onImportNsis()
         QMessageBox::information(this, "Import Warnings",
             QString("Imported with warnings:\n%1").arg(imp.warnings().join('\n')));
     }
-    m_manifest    = imp.manifest();
-    m_projectPath.clear();
-    m_dirty       = true;
+    {
+        OpenProject op;
+        op.manifest = imp.manifest();
+        op.tempId   = QUuid::createUuid().toString(QUuid::WithoutBraces);
+        op.dirty    = true;
+        autoSaveActive();
+        m_openProjects.append(op);
+        m_activeIdx = m_openProjects.size() - 1;
+    }
     loadEditors();
     updateWindowTitle();
     updateProjectInfoLabel();
@@ -243,9 +280,15 @@ void StudioMainWindow::onImportInno()
         QMessageBox::information(this, "Import Warnings",
             QString("Imported with warnings:\n%1").arg(imp.warnings().join('\n')));
     }
-    m_manifest    = imp.manifest();
-    m_projectPath.clear();
-    m_dirty       = true;
+    {
+        OpenProject op;
+        op.manifest = imp.manifest();
+        op.tempId   = QUuid::createUuid().toString(QUuid::WithoutBraces);
+        op.dirty    = true;
+        autoSaveActive();
+        m_openProjects.append(op);
+        m_activeIdx = m_openProjects.size() - 1;
+    }
     loadEditors();
     updateWindowTitle();
     updateProjectInfoLabel();
@@ -313,11 +356,12 @@ void StudioMainWindow::onProfileChanged(int index)
         return;
     }
 
-    // Apply profile → manifest, then reload editors
-    p.applyToManifest(m_manifest);
-    m_appInfo->load(m_manifest);
-    m_security->load(m_manifest);
-    m_dirty = true;
+    // Apply profile → active manifest, then reload editors
+    if (!hasActive()) { m_profileCombo->setCurrentIndex(0); return; }
+    p.applyToManifest(active().manifest);
+    m_appInfo->load(active().manifest);
+    m_security->load(active().manifest);
+    active().dirty = true;
     updateWindowTitle();
     updateProjectInfoLabel();
     m_eventLog->appendInfo(QString("Applied builder profile: %1").arg(p.displayName));
@@ -326,8 +370,10 @@ void StudioMainWindow::onProfileChanged(int index)
     // Show this profile's project list in the sidebar
     refreshSidebar();
 
-    // Reset combo back to "no profile" after applying
-    m_profileCombo->setCurrentIndex(0);
+    // Keep combo on the selected profile — it is now the active build profile.
+    // The signing mode (skipSigning / devSignMode) is applied at build-time by
+    // BuildPanel::applyProfile(); sync the label now so it's visible immediately.
+    m_build->applyProfile(p);
 }
 
 void StudioMainWindow::onManageProfiles()
@@ -410,28 +456,24 @@ void StudioMainWindow::onTabChanged(int /*index*/)
     // Sync sidebar selection to active tab when needed
 }
 
-void StudioMainWindow::onNavigateTo(const QString &key)
+void StudioMainWindow::onApplicationSelected(const QString &appGroupId)
 {
-    // Tab order: 0=AppInfo 1=Files 2=Components 3=Shortcuts 4=Registry
-    //            5=Security 6=Prerequisites 7=Actions 8=Build
-    if      (key == "appinfo" || key == "root")  m_editorTabs->setCurrentIndex(0);
-    else if (key == "files")                     m_editorTabs->setCurrentIndex(1);
-    else if (key.startsWith("component:"))       m_editorTabs->setCurrentIndex(1);
-    else if (key == "components")                m_editorTabs->setCurrentIndex(2);
-    else if (key == "shortcuts")                 m_editorTabs->setCurrentIndex(3);
-    else if (key == "registry")                  m_editorTabs->setCurrentIndex(4);
-    else if (key == "security")                  m_editorTabs->setCurrentIndex(5);
-    else if (key == "prerequisites")             m_editorTabs->setCurrentIndex(6);
-    else if (key == "actions")                   m_editorTabs->setCurrentIndex(7);
-    else if (key == "build")                     m_editorTabs->setCurrentIndex(8);
+    if (hasActive()) {
+        active().activeAppGroupId = appGroupId;
+        // future: m_files->selectAppGroup(appGroupId); m_components->selectAppGroup(appGroupId);
+    }
+    m_sidebar->setActiveAppGroup(appGroupId);
+    m_editorTabs->setCurrentWidget(m_files);
 }
 
 void StudioMainWindow::onProjectModified()
 {
-    if (!m_dirty) {
-        m_dirty = true;
+    if (m_loading || !hasActive()) return;
+    if (!active().dirty) {
+        active().dirty = true;
         updateWindowTitle();
     }
+    m_autoSaveTimer->start();   // debounce → onAutoSave → autoSaveActive()
 }
 
 void StudioMainWindow::onProjectInfoChanged()
@@ -466,25 +508,31 @@ void StudioMainWindow::onBuildFinished(bool ok, const QString &outputPath)
     }
 
     // Record in build history
-    BuildRecord rec;
-    rec.appName    = m_manifest.app.name;
-    rec.appVersion = m_manifest.app.version;
-    rec.platforms  = m_manifest.targets;
-    rec.timestamp  = QDateTime::currentDateTime();
-    rec.outputPath = outputPath;
-    rec.codeSignStatus = m_manifest.signing.macosSigner.isEmpty()
-                         ? "unsigned" : "signed";
-    rec.success    = ok;
-    m_buildHistory->addRecord(rec);
+    if (hasActive()) {
+        const Manifest &m = active().manifest;
+        BuildRecord rec;
+        rec.appName        = m.app.name;
+        rec.appVersion     = m.app.version;
+        rec.platforms      = m.targets;
+        rec.timestamp      = QDateTime::currentDateTime();
+        rec.outputPath     = outputPath;
+        rec.codeSignStatus = m.signing.macosSigner.isEmpty() ? "unsigned" : "signed";
+        rec.success        = ok;
+        m_buildHistory->addRecord(rec);
+    }
 }
 
 // ── Protected ─────────────────────────────────────────────────────────────────
 void StudioMainWindow::closeEvent(QCloseEvent *event)
 {
-    if (confirmDiscard())
-        event->accept();
-    else
-        event->ignore();
+    // Auto-save every dirty project that has a path; just let the rest go
+    collectEditors();   // flush the active project's UI state first
+    for (OpenProject &op : m_openProjects) {
+        if (!op.dirty || op.path.isEmpty()) continue;
+        QString err;
+        op.manifest.save(op.path, &err);
+    }
+    event->accept();
 }
 
 // ── Private helpers ───────────────────────────────────────────────────────────
@@ -546,18 +594,27 @@ void StudioMainWindow::buildUi()
             this, &StudioMainWindow::onOpenProject);
     connect(m_sidebar, &ProjectSidebar::switchProjectRequested,
             this, &StudioMainWindow::onSwitchProject);
-    connect(m_sidebar, &ProjectSidebar::removeProjectFromProfile,
-            this, &StudioMainWindow::onRemoveProjectFromProfile);
+    connect(m_sidebar, &ProjectSidebar::closeProjectRequested,
+            this, &StudioMainWindow::onCloseProject);
+    connect(m_sidebar, &ProjectSidebar::copyProjectRequested,
+            this, &StudioMainWindow::onCopyProject);
+    connect(m_sidebar, &ProjectSidebar::deleteProjectRequested,
+            this, &StudioMainWindow::onDeleteProject);
     connect(m_sidebar, &ProjectSidebar::addApplicationRequested,
             this, &StudioMainWindow::onAddApplication);
-    connect(m_sidebar, &ProjectSidebar::projectNameChanged,
-            this, &StudioMainWindow::onProjectNameChanged);
+    connect(m_sidebar, &ProjectSidebar::deleteApplicationRequested,
+            this, &StudioMainWindow::onDeleteApplication);
+    connect(m_sidebar, &ProjectSidebar::renameProjectRequested,
+            this, &StudioMainWindow::onRenameProject);
     connect(m_sidebar, &ProjectSidebar::applicationSelected,
             this, &StudioMainWindow::onApplicationSelected);
 
     // ── Connect build signals ────────────────────────────────────────────
-    connect(m_build, &BuildPanel::buildLog,      this, &StudioMainWindow::onBuildLog);
-    connect(m_build, &BuildPanel::buildProgress, this, &StudioMainWindow::onBuildProgress);
+    // buildRequested: user clicked "Build Installer" inside the panel — route
+    // through onBuildStart() so collectEditors() runs before startBuild().
+    connect(m_build, &BuildPanel::buildRequested, this, &StudioMainWindow::onBuildStart);
+    connect(m_build, &BuildPanel::buildLog,       this, &StudioMainWindow::onBuildLog);
+    connect(m_build, &BuildPanel::buildProgress,  this, &StudioMainWindow::onBuildProgress);
     connect(m_build, &BuildPanel::buildFinished, this, &StudioMainWindow::onBuildFinished);
 
     // ── Connect editor modified() signals ─────────────────────────────────
@@ -877,23 +934,21 @@ void StudioMainWindow::buildToolBar()
 
 void StudioMainWindow::updateWindowTitle()
 {
-    QString name = m_manifest.app.name.isEmpty()
-                   ? "Untitled Project"
-                   : m_manifest.app.name;
-
-    if (m_dirty) name.prepend("* ");
-    if (!m_projectPath.isEmpty())
-        name += QString(" — %1").arg(QFileInfo(m_projectPath).fileName());
-
+    if (!hasActive()) { setWindowTitle("Mcaster1 Install Studio"); return; }
+    const OpenProject &op = active();
+    QString name = op.manifest.app.name.isEmpty() ? "Untitled Project" : op.manifest.app.name;
+    if (op.dirty) name.prepend("* ");
+    if (!op.path.isEmpty())
+        name += QString(" — %1").arg(QFileInfo(op.path).fileName());
     setWindowTitle(name + " — Mcaster1 Install Studio");
 }
 
 void StudioMainWindow::updateProjectInfoLabel()
 {
-    const QString appName = m_manifest.app.name.isEmpty()
-                            ? "(untitled)" : m_manifest.app.name;
-    const QString appVer  = m_manifest.app.version.isEmpty()
-                            ? "" : " v" + m_manifest.app.version;
+    if (!hasActive() || !m_projectInfoLabel) return;
+    const Manifest &m = active().manifest;
+    const QString appName = m.app.name.isEmpty() ? "(untitled)" : m.app.name;
+    const QString appVer  = m.app.version.isEmpty() ? "" : " v" + m.app.version;
     m_projectInfoLabel->setText(QString("Project: %1%2").arg(appName, appVer));
 }
 
@@ -917,49 +972,33 @@ void StudioMainWindow::refreshProfileCombo()
 
 void StudioMainWindow::loadEditors()
 {
-    m_initialized = false;
-
-    m_appInfo   ->load(m_manifest);
-    m_files     ->load(m_manifest);
-    m_components->load(m_manifest);
-    m_shortcuts ->load(m_manifest);
-    m_registry  ->load(m_manifest);
-    m_security  ->load(m_manifest);
-    m_prereqs   ->load(m_manifest);
-    m_actions   ->load(m_manifest);
-    m_sidebar   ->populate(m_manifest);
-    m_sidebar   ->setProjectName(m_manifest.app.name.isEmpty()
-                                 ? "New Project" : m_manifest.app.name);
+    if (!hasActive()) return;
+    m_loading = true;
+    const Manifest &m = active().manifest;
+    m_appInfo   ->load(m);
+    m_files     ->load(m);
+    m_components->load(m);
+    m_shortcuts ->load(m);
+    m_registry  ->load(m);
+    m_security  ->load(m);
+    m_prereqs   ->load(m);
+    m_actions   ->load(m);
     refreshSidebar();
-
-    m_initialized = true;
+    m_loading = false;
 }
 
 void StudioMainWindow::collectEditors()
 {
-    m_appInfo   ->save(m_manifest);
-    m_files     ->save(m_manifest);
-    m_components->save(m_manifest);
-    m_shortcuts ->save(m_manifest);
-    m_registry  ->save(m_manifest);
-    m_security  ->save(m_manifest);
-    m_prereqs   ->save(m_manifest);
-    m_actions   ->save(m_manifest);
-}
-
-bool StudioMainWindow::confirmDiscard()
-{
-    if (!m_dirty) return true;
-    auto ans = QMessageBox::question(
-        this, "Unsaved Changes",
-        "You have unsaved changes. Discard them?",
-        QMessageBox::Save | QMessageBox::Discard | QMessageBox::Cancel);
-
-    if (ans == QMessageBox::Save) {
-        onSaveProject();
-        return !m_dirty;
-    }
-    return ans == QMessageBox::Discard;
+    if (!hasActive()) return;
+    Manifest &m = active().manifest;
+    m_appInfo   ->save(m);
+    m_files     ->save(m);
+    m_components->save(m);
+    m_shortcuts ->save(m);
+    m_registry  ->save(m);
+    m_security  ->save(m);
+    m_prereqs   ->save(m);
+    m_actions   ->save(m);
 }
 
 // ── Theme switching ───────────────────────────────────────────────────────────
@@ -1071,47 +1110,83 @@ QIcon StudioMainWindow::svgIcon(const char *svgStr, int size)
 
 void StudioMainWindow::onProjectNameChanged(const QString &name)
 {
-    if (name.isEmpty() || name == m_manifest.app.name) return;
-    m_manifest.app.name = name;
+    if (!hasActive()) return;
+    if (name.isEmpty() || name == active().manifest.app.name) return;
+    active().manifest.app.name = name;
     m_appInfo->setAppName(name);       // QSignalBlocker inside — no feedback loop
-    m_sidebar->setProjectName(name);   // keep inline edit in sync if driven from AppInfoEditor
+    m_sidebar->setActiveProjectName(name);   // keep tree node in sync
     updateWindowTitle();
     updateProjectInfoLabel();
-    m_dirty = true;
+    active().dirty = true;
     m_autoSaveTimer->start();          // fires onAutoSave in 1500ms
+}
+
+void StudioMainWindow::autoSaveActive()
+{
+    if (!hasActive() || !active().dirty || active().path.isEmpty()) return;
+    collectEditors();
+    QString err;
+    if (active().manifest.save(active().path, &err))
+        active().dirty = false;
+}
+
+void StudioMainWindow::switchToProject(int index)
+{
+    if (index == m_activeIdx) return;
+    if (index < 0 || index >= m_openProjects.size()) return;
+    autoSaveActive();
+    m_activeIdx = index;
+    loadEditors();
+    updateWindowTitle();
+    updateProjectInfoLabel();
 }
 
 void StudioMainWindow::onAutoSave()
 {
-    if (m_projectPath.isEmpty()) return;   // no path yet; user must Save As first
+    if (!hasActive()) return;
+    OpenProject &op = active();
+
+    // For brand-new unsaved projects, auto-save to ~/Documents/Mcaster1Projects/
+    if (op.path.isEmpty()) {
+        if (op.manifest.app.name.isEmpty()) return;   // no name yet, nothing to do
+        const QString dir = QDir::homePath() + "/Documents/Mcaster1Projects";
+        QDir().mkpath(dir);
+        const QString base = sanitizeFilename(op.manifest.app.name);
+        QString candidate = dir + "/" + base + ".mis";
+        int n = 2;
+        while (QFile::exists(candidate))
+            candidate = dir + "/" + base + "_" + QString::number(n++) + ".mis";
+        op.path = candidate;
+        m_eventLog->appendInfo(QString("Auto-saving new project to: %1").arg(op.path));
+    }
 
     // Attempt file rename if app name changed
     const QString base    = sanitizeFilename(
-        m_manifest.app.name.isEmpty() ? "NewProject" : m_manifest.app.name);
-    const QFileInfo fi(m_projectPath);
+        op.manifest.app.name.isEmpty() ? "NewProject" : op.manifest.app.name);
+    const QFileInfo fi(op.path);
     const QString   newPath = fi.dir().absoluteFilePath(base + ".mis");
 
-    if (newPath != m_projectPath && !QFile::exists(newPath)) {
-        if (QFile::rename(m_projectPath, newPath)) {
+    if (newPath != op.path && !QFile::exists(newPath)) {
+        if (QFile::rename(op.path, newPath)) {
             // Update stored path in active profile
             const int pIdx = m_profileCombo->currentIndex() - 1;
             if (pIdx >= 0 && pIdx < m_profileManager.profiles().size()) {
                 BuilderProfile &p = m_profileManager.profiles()[pIdx];
-                const int pi = p.projectPaths.indexOf(m_projectPath);
+                const int pi = p.projectPaths.indexOf(op.path);
                 if (pi >= 0) p.projectPaths[pi] = newPath;
                 m_profileManager.save();
             }
-            m_projectPath = newPath;
+            op.path = newPath;
         }
     }
 
     collectEditors();
     QString err;
-    if (m_manifest.save(m_projectPath, &err)) {
-        m_dirty = false;
+    if (op.manifest.save(op.path, &err)) {
+        op.dirty = false;
         updateWindowTitle();
         refreshSidebar();
-        const QString fname = QFileInfo(m_projectPath).fileName();
+        const QString fname = QFileInfo(op.path).fileName();
         m_eventLog->appendInfo(QString("Auto-saved: %1").arg(fname));
         statusBar()->showMessage(QString("Auto-saved: %1").arg(fname), 3000);
     }
@@ -1121,19 +1196,20 @@ void StudioMainWindow::onAutoSave()
 
 void StudioMainWindow::onAddApplication()
 {
+    if (!hasActive()) return;
     bool ok;
     const QString name = QInputDialog::getText(
         this, "Add Application",
         "New application name:",
         QLineEdit::Normal,
-        QString("App %1").arg(m_manifest.appGroups.size() + 1),
+        QString("App %1").arg(active().manifest.appGroups.size() + 1),
         &ok);
     if (!ok || name.trimmed().isEmpty()) return;
 
     AppGroup g;
     g.id   = QUuid::createUuid().toString(QUuid::WithoutBraces).left(8);
     g.name = name.trimmed();
-    m_manifest.appGroups.append(g);
+    active().manifest.appGroups.append(g);
     loadEditors();
     m_editorTabs->setCurrentWidget(m_files);
     onProjectModified();
@@ -1142,19 +1218,182 @@ void StudioMainWindow::onAddApplication()
 
 void StudioMainWindow::onSwitchProject(const QString &path)
 {
-    if (path == m_projectPath) return;
+    // Check if already open in the session
+    for (int i = 0; i < m_openProjects.size(); ++i) {
+        if (m_openProjects[i].path == path) {
+            switchToProject(i);
+            return;
+        }
+    }
     openProject(path);
 }
 
-void StudioMainWindow::onRemoveProjectFromProfile(const QString &path)
+void StudioMainWindow::onCloseProject(const QString &path)
 {
-    const int pIdx = m_profileCombo->currentIndex() - 1;
-    if (pIdx < 0 || pIdx >= m_profileManager.profiles().size()) return;
-    m_profileManager.profiles()[pIdx].projectPaths.removeAll(path);
-    m_profileManager.save();
+    // Find the project in the open list
+    int idx = -1;
+    for (int i = 0; i < m_openProjects.size(); ++i) {
+        if (m_openProjects[i].path == path) { idx = i; break; }
+    }
+    if (idx < 0) return;
+
+    // Collect + save before removing
+    if (idx == m_activeIdx) collectEditors();
+    if (m_openProjects[idx].dirty && !m_openProjects[idx].path.isEmpty()) {
+        QString err;
+        m_openProjects[idx].manifest.save(m_openProjects[idx].path, &err);
+    }
+
+    m_openProjects.removeAt(idx);
+
+    // Always keep at least one project open
+    if (m_openProjects.isEmpty()) {
+        OpenProject op;
+        op.manifest = Manifest::newProject();
+        op.tempId   = QUuid::createUuid().toString(QUuid::WithoutBraces);
+        m_openProjects.append(op);
+        m_activeIdx = 0;
+    } else {
+        if (idx < m_activeIdx)
+            --m_activeIdx;
+        if (m_activeIdx >= m_openProjects.size())
+            m_activeIdx = m_openProjects.size() - 1;
+    }
+
+    loadEditors();
+    updateWindowTitle();
+    updateProjectInfoLabel();
     refreshSidebar();
     m_eventLog->appendInfo(
-        QString("Removed from profile: %1").arg(QFileInfo(path).fileName()));
+        QString("Closed project: %1").arg(QFileInfo(path).fileName()));
+}
+
+// ── New project context-menu actions ─────────────────────────────────────────
+
+void StudioMainWindow::onRenameProject(const QString &path, const QString &newName)
+{
+    if (newName.isEmpty()) return;
+
+    // Find the project — empty path = unsaved, fall back to active
+    int idx = m_activeIdx;
+    if (!path.isEmpty()) {
+        for (int i = 0; i < m_openProjects.size(); ++i) {
+            if (m_openProjects[i].path == path) { idx = i; break; }
+        }
+    }
+    if (idx < 0 || idx >= m_openProjects.size()) return;
+    OpenProject &op = m_openProjects[idx];
+    if (newName == op.manifest.app.name) return;
+
+    op.manifest.app.name = newName;
+    op.dirty = true;
+
+    if (idx == m_activeIdx) {
+        m_appInfo->setAppName(newName);
+        updateWindowTitle();
+        updateProjectInfoLabel();
+        m_autoSaveTimer->start();  // debounced auto-save for active project
+    } else {
+        // Non-active project — save immediately
+        if (!op.path.isEmpty()) {
+            const QString base    = sanitizeFilename(newName);
+            const QFileInfo fi(op.path);
+            const QString   newPath = fi.dir().absoluteFilePath(base + ".mis");
+            if (newPath != op.path && !QFile::exists(newPath)) {
+                if (QFile::rename(op.path, newPath)) {
+                    const int pIdx = m_profileCombo->currentIndex() - 1;
+                    if (pIdx >= 0 && pIdx < m_profileManager.profiles().size()) {
+                        BuilderProfile &p = m_profileManager.profiles()[pIdx];
+                        const int pi = p.projectPaths.indexOf(op.path);
+                        if (pi >= 0) p.projectPaths[pi] = newPath;
+                        m_profileManager.save();
+                    }
+                    op.path = newPath;
+                }
+            }
+            QString err;
+            op.manifest.save(op.path, &err);
+            op.dirty = false;
+        }
+        refreshSidebar();
+    }
+}
+
+void StudioMainWindow::onCopyProject(const QString &path)
+{
+    // Find the source project (must be a saved project — empty path not copyable yet)
+    const OpenProject *src = nullptr;
+    for (const OpenProject &op : m_openProjects) {
+        if (op.path == path) { src = &op; break; }
+    }
+    if (!src) return;
+
+    bool ok;
+    const QString newName = QInputDialog::getText(
+        this, "Copy Project",
+        "Name for the copied project:",
+        QLineEdit::Normal,
+        src->manifest.app.name + " Copy",
+        &ok);
+    if (!ok || newName.trimmed().isEmpty()) return;
+
+    OpenProject copy;
+    copy.manifest           = src->manifest;   // deep copy
+    copy.manifest.app.name  = newName.trimmed();
+    copy.tempId             = QUuid::createUuid().toString(QUuid::WithoutBraces);
+    copy.dirty              = true;
+
+    autoSaveActive();
+    m_openProjects.append(copy);
+    m_activeIdx = m_openProjects.size() - 1;
+    loadEditors();
+    updateWindowTitle();
+    updateProjectInfoLabel();
+    m_editorTabs->setCurrentWidget(m_appInfo);
+    m_autoSaveTimer->start();   // will create the .mis file on first auto-save
+    m_eventLog->appendInfo(
+        QString("Copied project: \"%1\" \u2192 \"%2\"")
+            .arg(src->manifest.app.name, newName.trimmed()));
+}
+
+void StudioMainWindow::onDeleteProject(const QString &path)
+{
+    if (path.isEmpty()) return;
+
+    // First close from session (handles active index adjustment + creates blank if last)
+    onCloseProject(path);
+
+    // Then delete the file from disk
+    if (QFile::exists(path)) {
+        QFile::remove(path);
+        // Remove from any profile that tracks it
+        const int pIdx = m_profileCombo->currentIndex() - 1;
+        if (pIdx >= 0 && pIdx < m_profileManager.profiles().size()) {
+            m_profileManager.profiles()[pIdx].projectPaths.removeAll(path);
+            m_profileManager.save();
+        }
+        m_eventLog->appendInfo(
+            QString("Deleted project: %1").arg(QFileInfo(path).fileName()));
+    }
+}
+
+void StudioMainWindow::onDeleteApplication(const QString &appGroupId)
+{
+    if (!hasActive()) return;
+    Manifest &m = active().manifest;
+    for (int i = 0; i < m.appGroups.size(); ++i) {
+        if (m.appGroups[i].id == appGroupId) {
+            const QString name = m.appGroups[i].name;
+            m.appGroups.removeAt(i);
+            // Clear active app if it was the deleted one
+            if (active().activeAppGroupId == appGroupId)
+                active().activeAppGroupId.clear();
+            loadEditors();
+            onProjectModified();
+            m_eventLog->appendInfo(QString("Deleted application: %1").arg(name));
+            return;
+        }
+    }
 }
 
 // ── Profile–project association helpers ──────────────────────────────────────
@@ -1175,11 +1414,27 @@ void StudioMainWindow::associateProjectWithProfile(const QString &path)
 void StudioMainWindow::refreshSidebar()
 {
     if (!m_sidebar) return;
-    const int pIdx = m_profileCombo->currentIndex() - 1;
-    QStringList paths;
-    if (pIdx >= 0 && pIdx < m_profileManager.profiles().size())
-        paths = m_profileManager.profiles().at(pIdx).projectPaths;
-    m_sidebar->populateProjects(paths, m_projectPath);
+
+    // Build the sidebar tree directly from the in-memory open project list.
+    // All projects are fully loaded — no disk reads needed.
+    QList<ProjectSidebar::ProjectEntry> entries;
+    for (int i = 0; i < m_openProjects.size(); ++i) {
+        const OpenProject &op = m_openProjects[i];
+        ProjectSidebar::ProjectEntry e;
+        e.path            = op.path;
+        e.isActive        = (i == m_activeIdx);
+        e.activeAppGroupId = op.activeAppGroupId;
+        e.name     = op.manifest.app.name.isEmpty()
+                     ? (op.path.isEmpty() ? "New Project" : QFileInfo(op.path).baseName())
+                     : op.manifest.app.name;
+        for (const AppGroup &g : op.manifest.appGroups) {
+            e.appGroupIds   << g.id;
+            e.appGroupNames << (g.name.isEmpty() ? g.id : g.name);
+        }
+        entries.append(e);
+    }
+
+    m_sidebar->refresh(entries);
 }
 
 void StudioMainWindow::onToggleHelpPanel()

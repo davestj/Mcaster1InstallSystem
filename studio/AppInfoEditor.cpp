@@ -316,7 +316,7 @@ void AppInfoEditor::buildUi()
         m_tgtLinux   = new QCheckBox("Linux",   grp);
 
         m_tgtMacos  ->setToolTip("Build a macOS .dmg installer");
-        m_tgtWindows->setToolTip("Build a Windows NSIS .exe installer");
+        m_tgtWindows->setToolTip("Build a Windows installer package (manifest + payload + Mcaster1Installer.exe)");
         m_tgtLinux  ->setToolTip("Build a Linux .deb / AppImage installer");
 
         hbox->addWidget(m_tgtMacos);
