@@ -40,10 +40,13 @@
 #include <cstring>
 
 #ifdef Q_OS_UNIX
-#  include <unistd.h>   // isatty()
+#  include <unistd.h>   // isatty(), STDOUT_FILENO
 #else
 #  include <io.h>
 #  define isatty _isatty
+#  ifndef STDOUT_FILENO
+#    define STDOUT_FILENO 1
+#  endif
 #endif
 
 #include "../manifest/Manifest.h"

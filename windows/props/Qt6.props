@@ -47,7 +47,11 @@
       Qt Installer typically creates: C:\Qt\<ver>\msvc2022_64\
       We probe several common version subdirs — first match wins.
     -->
+    <StandaloneQt6Dir Condition="'$(StandaloneQt6Dir)' == '' AND Exists('C:\Qt\6.10.2\msvc2022_64')">C:\Qt\6.10.2\msvc2022_64</StandaloneQt6Dir>
+    <StandaloneQt6Dir Condition="'$(StandaloneQt6Dir)' == '' AND Exists('C:\Qt\6.9.3\msvc2022_64')">C:\Qt\6.9.3\msvc2022_64</StandaloneQt6Dir>
+    <StandaloneQt6Dir Condition="'$(StandaloneQt6Dir)' == '' AND Exists('C:\Qt\6.9.1\msvc2022_64')">C:\Qt\6.9.1\msvc2022_64</StandaloneQt6Dir>
     <StandaloneQt6Dir Condition="'$(StandaloneQt6Dir)' == '' AND Exists('C:\Qt\6.9.0\msvc2022_64')">C:\Qt\6.9.0\msvc2022_64</StandaloneQt6Dir>
+    <StandaloneQt6Dir Condition="'$(StandaloneQt6Dir)' == '' AND Exists('C:\Qt\6.8.3\msvc2022_64')">C:\Qt\6.8.3\msvc2022_64</StandaloneQt6Dir>
     <StandaloneQt6Dir Condition="'$(StandaloneQt6Dir)' == '' AND Exists('C:\Qt\6.8.1\msvc2022_64')">C:\Qt\6.8.1\msvc2022_64</StandaloneQt6Dir>
     <StandaloneQt6Dir Condition="'$(StandaloneQt6Dir)' == '' AND Exists('C:\Qt\6.8.0\msvc2022_64')">C:\Qt\6.8.0\msvc2022_64</StandaloneQt6Dir>
     <StandaloneQt6Dir Condition="'$(StandaloneQt6Dir)' == '' AND Exists('C:\Qt\6.7.3\msvc2022_64')">C:\Qt\6.7.3\msvc2022_64</StandaloneQt6Dir>

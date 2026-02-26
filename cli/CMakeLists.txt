@@ -65,6 +65,22 @@ else()
     target_compile_options(miscc PRIVATE -Wall -Wextra -Wno-unused-parameter)
 endif()
 
+# ── Windows: windeployqt post-build (copies Qt DLLs to output dir) ───────────
+if(WIN32)
+    find_program(WINDEPLOYQT windeployqt
+        HINTS "${Qt6_DIR}/../../../bin" "$ENV{QT_MSVC_DIR}/bin")
+    if(WINDEPLOYQT)
+        add_custom_command(TARGET miscc POST_BUILD
+            COMMAND "${WINDEPLOYQT}"
+                    "--no-translations"
+                    "$<TARGET_FILE:miscc>"
+            COMMENT "windeployqt: copying Qt DLLs to output directory"
+        )
+    else()
+        message(STATUS "miscc: windeployqt not found — copy Qt DLLs manually")
+    endif()
+endif()
+
 # ── Install ───────────────────────────────────────────────────────────────────
 install(TARGETS miscc RUNTIME DESTINATION bin)
 

@@ -151,7 +151,8 @@ windows\
 
 `props\Qt6.props` probes for Qt versions in this order:
 1. `QT_MSVC_DIR` environment variable (explicit override)
-2. `C:\Qt\6.9.0\msvc2022_64` through `C:\Qt\6.6.3\msvc2022_64` (newest first)
+2. `C:\Qt\6.10.2\msvc2022_64` through `C:\Qt\6.6.3\msvc2022_64` (newest first)
+   - Installed versions confirmed: 6.10.2, 6.9.3, 6.9.1, 6.8.3, 6.7.3
 3. vcpkg: `%VCPKG_ROOT%\installed\x64-windows`
 4. Qt VS Tools: `$(QTDIR)` (set by qt.props extension import)
 
