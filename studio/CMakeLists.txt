@@ -146,10 +146,15 @@ if(APPLE)
         MACOSX_BUNDLE_ICON_FILE mcaster1.icns
     )
 else()
+    # Windows: embed .rc resource (icon + version info) so Explorer shows the icon
+    set(WIN_RC ${CMAKE_CURRENT_SOURCE_DIR}/../windows/res/Mcaster1InstallStudio.rc)
     add_executable(Mcaster1InstallStudio WIN32
         ${STUDIO_SOURCES}
         ${STUDIO_HEADERS}
+        ${WIN_RC}
     )
+    # mcaster1.ico lives alongside the .rc in windows/res/ — RC compiler resolves relative paths
+    # from the .rc file's directory automatically
 endif()
 
 # ── Link Qt6 ─────────────────────────────────────────────────────────────────

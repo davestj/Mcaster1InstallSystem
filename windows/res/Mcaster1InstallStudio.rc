@@ -4,9 +4,10 @@
 #include <windows.h>
 
 // ── Application Icon ────────────────────────────────────────────────────────
-// Place mcaster1.ico in this directory (convert resources/icons/mcaster1.svg with
-// ImageMagick or use the included mcaster1.icns as source via icoutils on Windows)
-// IDI_APPICON   ICON   "mcaster1.ico"
+// mcaster1.ico: 7-size ICO (16,24,32,48,64,128,256) generated from mcaster1.svg
+// Embedded here so Windows Explorer, taskbar, Start Menu, Alt+Tab all show the icon.
+#define IDI_APPICON 1
+IDI_APPICON   ICON   "mcaster1.ico"
 
 // ── Version Information ─────────────────────────────────────────────────────
 VS_VERSION_INFO VERSIONINFO

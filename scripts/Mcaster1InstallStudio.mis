@@ -1,0 +1,406 @@
+format: mis/1
+
+# ─────────────────────────────────────────────────────────────────────────────
+# Mcaster1 Install Studio — Self-Installer Manifest
+# ─────────────────────────────────────────────────────────────────────────────
+# Publisher : David StJohn / Mcaster1
+# Target    : Windows (x64)  ← this build; macOS/Linux added in future phases
+# Built by  : Mcaster1 Install Studio itself (dogfood build)
+#
+# What this installs:
+#   - Mcaster1InstallStudio.exe    — The full Qt6 IDE
+#   - Mcaster1Installer.exe        — Runtime wizard (bundled for builds you author)
+#   - miscc.exe                    — Headless CLI compiler
+#   - Qt6 DLLs + plugins           — All required Qt6 runtime DLLs
+#   - docs/                        — HTML help documentation
+#   - examples/                    — 4 annotated .mis example projects
+#   - LICENSE                      — MIT license
+#   - Desktop + Start Menu shortcuts
+#   - Windows registry entries (install path, version, app registration)
+#   - Uninstaller entry in Add/Remove Programs
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── App identity ──────────────────────────────────────────────────────────────
+app:
+  name:        "Mcaster1 Install Studio"
+  version:     "1.0.0"
+  publisher:   "Mcaster1"
+  description: >-
+    Cross-platform installer authoring suite. Create professional installer
+    packages for macOS, Windows, and Linux from a single YAML project file.
+    No NSIS, no WiX, no Inno Setup — fully self-contained native runtime.
+  identifier:  "com.mcaster1.installstudio"
+  icon:        "resources/icons/mcaster1.ico"
+  license:     "LICENSE"
+  url:         "https://mcaster1.com"
+  support-url: "https://mcaster1.com/support"
+
+# ── Install defaults ──────────────────────────────────────────────────────────
+defaults:
+  install-dir:
+    windows: "C:\\Program Files\\Mcaster1\\Mcaster1InstallStudio"
+  require-admin:    true
+  allow-custom-dir: true
+  launch-after:     true
+  create-uninstaller: true
+
+# ── Visual theme ──────────────────────────────────────────────────────────────
+theme:
+  accent-color:  "#00c9ff"
+  background:    "#1a1a2e"
+  dark-mode:     true
+
+# ── Code signing ──────────────────────────────────────────────────────────────
+signing:
+  win-pfx-path:      "~/codesigning/mcaster1/installstudio/mcaster1-installstudio.pfx"
+  win-pfx-password:  "Mcaster1Dev2026!"
+  win-timestamp: "http://timestamp.sectigo.com"
+
+# ── Target platforms ─────────────────────────────────────────────────────────
+targets:
+  - windows
+
+# ── Application groups ────────────────────────────────────────────────────────
+app-groups:
+  - id:          studio
+    name:        "Studio IDE"
+    description: "Mcaster1 Install Studio — the graphical IDE for authoring .mis projects"
+
+  - id:          runtime
+    name:        "Runtime & CLI"
+    description: "Mcaster1Installer runtime wizard and miscc headless CLI compiler"
+
+  - id:          docs
+    name:        "Documentation & Examples"
+    description: "In-app HTML help docs and annotated example .mis projects"
+
+# ── Prerequisites ─────────────────────────────────────────────────────────────
+prerequisites:
+  - id:        vcredist2022
+    name:      "Microsoft Visual C++ 2022 Redistributable (x64)"
+    check:     "reg query \"HKLM\\SOFTWARE\\Microsoft\\VisualStudio\\14.0\\VC\\Runtimes\\X64\" /v Version 2>nul | findstr /R \"1[45]\\.[0-9]\" && echo ok"
+    install:   "https://aka.ms/vs/17/release/vc_redist.x64.exe"
+    platforms: [windows]
+
+  - id:        win10
+    name:      "Windows 10 or later (64-bit)"
+    check:     "ver | findstr /R \"10\\. 11\\.\" && echo ok"
+    platforms: [windows]
+
+# ── Components ────────────────────────────────────────────────────────────────
+components:
+
+  # ── Studio IDE ──────────────────────────────────────────────────────────────
+  - id:        studio-exe
+    name:      "Mcaster1 Install Studio (IDE)"
+    description: >-
+      The full Qt6 graphical IDE. Open, create, and build .mis installer projects.
+      Includes 9-tab editor, multi-project sidebar, EventLog dock, BuildHistory dock,
+      in-app help viewer, builder profiles, and integrated code-sign dialog.
+    required:  true
+    selected:  true
+    app-group: studio
+    platforms: [windows]
+    files:
+      - src:   "payload/Mcaster1InstallStudio.exe"
+        dst:   "{install-dir}/Mcaster1InstallStudio.exe"
+
+  - id:        studio-qt-dlls
+    name:      "Qt6 Runtime Libraries (Studio)"
+    description: >-
+      Qt6 DLLs required by the Studio IDE: Qt6Core, Qt6Gui, Qt6Widgets,
+      Qt6Svg, Qt6SvgWidgets, Qt6Concurrent, Qt6Network, Qt6Pdf, plus
+      OpenGL software renderer and Direct3D compiler shim for all display
+      hardware. All deployed by windeployqt at build time.
+    required:  true
+    selected:  true
+    app-group: studio
+    depends:   [studio-exe]
+    platforms: [windows]
+    files:
+      - src:   "payload/Qt6Cored.dll"
+        dst:   "{install-dir}/Qt6Cored.dll"
+      - src:   "payload/Qt6Guid.dll"
+        dst:   "{install-dir}/Qt6Guid.dll"
+      - src:   "payload/Qt6Widgetsd.dll"
+        dst:   "{install-dir}/Qt6Widgetsd.dll"
+      - src:   "payload/Qt6Svgd.dll"
+        dst:   "{install-dir}/Qt6Svgd.dll"
+      - src:   "payload/Qt6Concurrentd.dll"
+        dst:   "{install-dir}/Qt6Concurrentd.dll"
+      - src:   "payload/Qt6Networkd.dll"
+        dst:   "{install-dir}/Qt6Networkd.dll"
+      - src:   "payload/Qt6Pdfd.dll"
+        dst:   "{install-dir}/Qt6Pdfd.dll"
+      - src:   "payload/opengl32sw.dll"
+        dst:   "{install-dir}/opengl32sw.dll"
+      - src:   "payload/D3Dcompiler_47.dll"
+        dst:   "{install-dir}/D3Dcompiler_47.dll"
+
+  - id:        studio-qt-plugins
+    name:      "Qt6 Plugins (Studio)"
+    description: >-
+      Qt6 platform plugin (qwindows.dll), SVG icon engine, image format plugins,
+      network information, TLS backends, and Windows style plugin required for
+      the Studio IDE to render correctly on all Windows 10/11 configurations.
+    required:  true
+    selected:  true
+    app-group: studio
+    depends:   [studio-qt-dlls]
+    platforms: [windows]
+    files:
+      - src:   "payload/platforms"
+        dst:   "{install-dir}/platforms"
+        isDir: true
+      - src:   "payload/iconengines"
+        dst:   "{install-dir}/iconengines"
+        isDir: true
+      - src:   "payload/imageformats"
+        dst:   "{install-dir}/imageformats"
+        isDir: true
+      - src:   "payload/styles"
+        dst:   "{install-dir}/styles"
+        isDir: true
+      - src:   "payload/networkinformation"
+        dst:   "{install-dir}/networkinformation"
+        isDir: true
+      - src:   "payload/generic"
+        dst:   "{install-dir}/generic"
+        isDir: true
+      - src:   "payload/tls"
+        dst:   "{install-dir}/tls"
+        isDir: true
+
+  # ── Runtime & CLI ───────────────────────────────────────────────────────────
+  - id:        runtime-exe
+    name:      "Mcaster1 Installer Runtime"
+    description: >-
+      Mcaster1Installer.exe — the end-user installer wizard bundled into every
+      package you build with Studio. Required by the Windows build backend.
+      8-page QWizard: Welcome, License, Prerequisites, Components, Directory,
+      Ready, Installing, Finish. InstallEngine runs as QThread for non-blocking UI.
+    required:  false
+    selected:  true
+    app-group: runtime
+    platforms: [windows]
+    files:
+      - src:   "payload/Mcaster1Installer.exe"
+        dst:   "{install-dir}/Mcaster1Installer.exe"
+
+  - id:        miscc-cli
+    name:      "miscc — Headless CLI Compiler"
+    description: >-
+      miscc.exe — build installer packages from the command line or CI pipelines.
+      Supports 12 flags: --platform, --output-dir, --profile, --dry-run,
+      --no-sign, --notarize, --verbose, --list-platforms, --list-profiles, etc.
+      Qt6 Core + Concurrent only (no GUI). Exit codes: 0=success, 1=validation,
+      2=build failure, 3=usage error.
+    required:  false
+    selected:  true
+    app-group: runtime
+    platforms: [windows]
+    files:
+      - src:   "payload/miscc.exe"
+        dst:   "{install-dir}/miscc.exe"
+
+  # ── Documentation & Examples ────────────────────────────────────────────────
+  - id:        docs-html
+    name:      "In-App HTML Documentation"
+    description: >-
+      docs/index.html — the complete reference guide opened from Studio's
+      Help menu and HelpPanel dock. Covers: .mis format, all 9 tab editors,
+      builder profiles, build backends, signing modes, miscc CLI flags, and
+      example project walkthroughs.
+    required:  false
+    selected:  true
+    app-group: docs
+    platforms: [windows]
+    files:
+      - src:   "payload/docs"
+        dst:   "{install-dir}/docs"
+        isDir: true
+
+  - id:        examples
+    name:      "Example .mis Projects"
+    description: >-
+      Four annotated example projects demonstrating progressively complex
+      installer configurations:
+        - SimpleNotepad   Minimal 2-platform starter (macOS + Windows)
+        - AcmeWidgets     Full cross-platform example with payload structure
+        - DevSuite        Enterprise 3-app-group, all platforms, full signing
+        - StreamServer    Daemon + GUI pattern (macOS + Linux)
+    required:  false
+    selected:  true
+    app-group: docs
+    platforms: [windows]
+    files:
+      - src:   "payload/examples"
+        dst:   "{install-dir}/examples"
+        isDir: true
+
+# ── Shortcuts ─────────────────────────────────────────────────────────────────
+shortcuts:
+  - name:   "Mcaster1 Install Studio"
+    target: "{install-dir}/Mcaster1InstallStudio.exe"
+    icon:   "{install-dir}/Mcaster1InstallStudio.exe"
+    type:   app
+
+  - name:   "Mcaster1 Install Studio — Help"
+    target: "{install-dir}/docs/index.html"
+    type:   url
+
+  - name:   "Mcaster1 Install Studio — Examples"
+    target: "{install-dir}/examples"
+    type:   url
+
+# ── Windows Registry ──────────────────────────────────────────────────────────
+registry:
+  # ── Uninstall / Add-Remove Programs entry ─────────────────────────────────
+  - hive:  HKLM
+    key:   "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Mcaster1InstallStudio"
+    value: "DisplayName"
+    data:  "Mcaster1 Install Studio"
+    type:  REG_SZ
+
+  - hive:  HKLM
+    key:   "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Mcaster1InstallStudio"
+    value: "DisplayVersion"
+    data:  "1.0.0"
+    type:  REG_SZ
+
+  - hive:  HKLM
+    key:   "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Mcaster1InstallStudio"
+    value: "Publisher"
+    data:  "Mcaster1"
+    type:  REG_SZ
+
+  - hive:  HKLM
+    key:   "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Mcaster1InstallStudio"
+    value: "URLInfoAbout"
+    data:  "https://mcaster1.com"
+    type:  REG_SZ
+
+  - hive:  HKLM
+    key:   "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Mcaster1InstallStudio"
+    value: "URLUpdateInfo"
+    data:  "https://mcaster1.com/releases"
+    type:  REG_SZ
+
+  - hive:  HKLM
+    key:   "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Mcaster1InstallStudio"
+    value: "HelpLink"
+    data:  "https://mcaster1.com/support"
+    type:  REG_SZ
+
+  - hive:  HKLM
+    key:   "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Mcaster1InstallStudio"
+    value: "InstallLocation"
+    data:  "{install-dir}"
+    type:  REG_SZ
+
+  - hive:  HKLM
+    key:   "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Mcaster1InstallStudio"
+    value: "NoModify"
+    data:  "1"
+    type:  REG_DWORD
+
+  - hive:  HKLM
+    key:   "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Mcaster1InstallStudio"
+    value: "NoRepair"
+    data:  "1"
+    type:  REG_DWORD
+
+  # ── Product install path (for other tools / integrations to locate Studio) ─
+  - hive:  HKLM
+    key:   "SOFTWARE\\Mcaster1\\InstallStudio"
+    value: "InstallPath"
+    data:  "{install-dir}"
+    type:  REG_SZ
+
+  - hive:  HKLM
+    key:   "SOFTWARE\\Mcaster1\\InstallStudio"
+    value: "Version"
+    data:  "1.0.0"
+    type:  REG_SZ
+
+  - hive:  HKLM
+    key:   "SOFTWARE\\Mcaster1\\InstallStudio"
+    value: "Publisher"
+    data:  "David StJohn / Mcaster1"
+    type:  REG_SZ
+
+  # ── .mis file association ────────────────────────────────────────────────────
+  - hive:  HKCR
+    key:   ".mis"
+    value: ""
+    data:  "Mcaster1.InstallerProject"
+    type:  REG_SZ
+
+  - hive:  HKCR
+    key:   "Mcaster1.InstallerProject"
+    value: ""
+    data:  "Mcaster1 Installer Project"
+    type:  REG_SZ
+
+  - hive:  HKCR
+    key:   "Mcaster1.InstallerProject\\DefaultIcon"
+    value: ""
+    data:  "{install-dir}\\Mcaster1InstallStudio.exe,0"
+    type:  REG_SZ
+
+  - hive:  HKCR
+    key:   "Mcaster1.InstallerProject\\shell\\open\\command"
+    value: ""
+    data:  "\"{install-dir}\\Mcaster1InstallStudio.exe\" \"%1\""
+    type:  REG_SZ
+
+  # ── Per-user: track first-run and install date ──────────────────────────────
+  - hive:  HKCU
+    key:   "SOFTWARE\\Mcaster1\\InstallStudio"
+    value: "FirstRun"
+    data:  "1"
+    type:  REG_DWORD
+
+  - hive:  HKCU
+    key:   "SOFTWARE\\Mcaster1\\InstallStudio"
+    value: "InstalledBy"
+    data:  "David StJohn"
+    type:  REG_SZ
+
+# ── Custom Actions ────────────────────────────────────────────────────────────
+custom-actions:
+
+  - id:        add-miscc-to-path
+    trigger:   after-install
+    type:      shell
+    command:   >-
+      setx PATH "%PATH%;{install-dir}" /M
+    platforms: [windows]
+
+  - id:        register-mis-association
+    trigger:   after-install
+    type:      shell
+    command:   >-
+      assoc .mis=Mcaster1.InstallerProject && ftype Mcaster1.InstallerProject="{install-dir}\Mcaster1InstallStudio.exe" "%1"
+    platforms: [windows]
+
+  - id:        refresh-shell
+    trigger:   after-install
+    type:      shell
+    command:   >-
+      ie4uinit.exe -show
+    platforms: [windows]
+
+  - id:        remove-mis-association
+    trigger:   before-uninstall
+    type:      shell
+    command:   >-
+      assoc .mis= && ftype Mcaster1.InstallerProject=
+    platforms: [windows]
+
+  - id:        remove-uninstall-key
+    trigger:   after-uninstall
+    type:      shell
+    command:   >-
+      reg delete "HKLM\SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Mcaster1InstallStudio" /f 2>nul & reg delete "HKLM\SOFTWARE\Mcaster1\InstallStudio" /f 2>nul & reg delete "HKCR\.mis" /f 2>nul & reg delete "HKCR\Mcaster1.InstallerProject" /f 2>nul
+    platforms: [windows]

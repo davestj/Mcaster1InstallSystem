@@ -139,13 +139,18 @@ QString WindowsBackend::findRuntimeExe() const
     // Probe paths relative to the Studio executable and project root
     const QString exeDir = QCoreApplication::applicationDirPath();
     const QStringList candidates = {
-        // cmake build tree (macOS Studio build → runtime sibling)
-        exeDir + "/../../../../runtime/build/Mcaster1Installer.exe",
+        // Flat layout (installer next to studio / miscc — deployed package)
+        exeDir + "/Mcaster1Installer.exe",
+        // CMake Windows build tree (miscc is in cli/build-win/Debug/)
+        exeDir + "/../../../runtime/build-win/Debug/Mcaster1Installer.exe",
+        exeDir + "/../../../runtime/build-win/Release/Mcaster1Installer.exe",
+        exeDir + "/../../../../runtime/build-win/Debug/Mcaster1Installer.exe",
+        exeDir + "/../../../../runtime/build-win/Release/Mcaster1Installer.exe",
+        // CMake macOS/Linux build tree
+        exeDir + "/../../../../runtime/build/Mcaster1Installer.app/Contents/MacOS/Mcaster1Installer",
         exeDir + "/../../../runtime/build/Mcaster1Installer.exe",
         exeDir + "/../../runtime/build/Mcaster1Installer.exe",
         exeDir + "/../runtime/build/Mcaster1Installer.exe",
-        // Flat layout (installer next to studio)
-        exeDir + "/Mcaster1Installer.exe",
         // Windows VS2022 build tree layouts
         exeDir + "/../../../../windows/x64/Debug/Mcaster1Installer.exe",
         exeDir + "/../../../../windows/x64/Release/Mcaster1Installer.exe",
