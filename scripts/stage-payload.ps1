@@ -66,12 +66,28 @@ foreach ($dir in @("platforms", "iconengines", "imageformats", "styles",
 }
 
 # ── Runtime Installer ─────────────────────────────────────────────────────────
+# The runtime installer needs windeployqt run against it so it gets its own Qt DLLs.
+# These DLLs live in runtime/build-win/Debug/ after cmake --build runtime/build-win.
+# We stage them into payload/ so the installed Mcaster1Installer.exe can find them.
 Write-Host ""
-Write-Host "[2/4] Staging Mcaster1Installer.exe ..."
-Stage-File "$RuntimeSrc\Mcaster1Installer.exe" "$PayloadDir\Mcaster1Installer.exe"
-# Runtime also needs Qt DLLs (copy those it needs, they may differ from Studio)
-foreach ($dll in @("Qt6Cored.dll", "Qt6Guid.dll", "Qt6Widgetsd.dll", "Qt6Svgd.dll")) {
-    # Already staged above — runtime shares the same Qt DLLs in flat install dir
+Write-Host "[2/4] Staging Mcaster1Installer.exe + runtime Qt DLLs ..."
+
+# Run windeployqt on runtime if not already done
+$WinDeployQt = "C:\Qt\6.9.3\msvc2022_64\bin\windeployqt.exe"
+$RuntimeExe  = "$RuntimeSrc\Mcaster1Installer.exe"
+if (Test-Path $RuntimeExe) {
+    if (Test-Path $WinDeployQt) {
+        Write-Host "  Running windeployqt on Mcaster1Installer.exe ..."
+        & $WinDeployQt --no-translations $RuntimeExe 2>&1 | Where-Object { $_ -match "Updating|error" } | ForEach-Object { Write-Host "  $_" }
+    }
+    Stage-File $RuntimeExe "$PayloadDir\Mcaster1Installer.exe"
+    # Copy any runtime-specific DLLs (Qt6SvgWidgets etc.) that may differ from Studio
+    foreach ($dll in @("Qt6SvgWidgetsd.dll")) {
+        if (Test-Path "$RuntimeSrc\$dll") { Stage-File "$RuntimeSrc\$dll" "$PayloadDir\$dll" }
+    }
+} else {
+    Write-Host "  ! Mcaster1Installer.exe not found at: $RuntimeExe" -ForegroundColor Yellow
+    Write-Host "  ! Run: cmake --build runtime/build-win --config Debug" -ForegroundColor Yellow
 }
 
 # ── miscc CLI ─────────────────────────────────────────────────────────────────

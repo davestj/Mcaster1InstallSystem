@@ -22,11 +22,17 @@
 // ── outputFilename ─────────────────────────────────────────────────────────────
 QString WindowsBackend::outputFilename(const Manifest &m) const
 {
-    const QString base = QString("%1-%2-%3-win64-setup")
-        .arg(m.app.publisher.isEmpty() ? "Mcaster1" : m.app.publisher,
-             m.app.name.isEmpty()      ? "App"       : m.app.name,
-             m.app.version.isEmpty()   ? "1.0.0"     : m.app.version)
-        .replace(' ', '_');
+    QString base;
+    if (!m.app.outputName.isEmpty()) {
+        // Custom name from manifest: e.g. "MyApp-Setup" → "MyApp-Setup-win64.zip"
+        base = m.app.outputName.trimmed().replace(' ', '_') + "-win64";
+    } else {
+        base = QString("%1-%2-%3-win64-setup")
+            .arg(m.app.publisher.isEmpty() ? "Mcaster1" : m.app.publisher,
+                 m.app.name.isEmpty()      ? "App"       : m.app.name,
+                 m.app.version.isEmpty()   ? "1.0.0"     : m.app.version)
+            .replace(' ', '_');
+    }
     return base + ".zip";
 }
 
@@ -105,6 +111,22 @@ bool WindowsBackend::build(const Manifest   &m,
         } else {
             report(progress, 58, "  Mcaster1Installer.exe bundled.");
         }
+        // Deploy Qt DLLs for the runtime installer into the package root
+        // so end-users can run Mcaster1Installer.exe without pre-installing Qt.
+        const QString windeployqt = findWinDeployQt();
+        if (!windeployqt.isEmpty()) {
+            QProcess deploy;
+            deploy.start(windeployqt, {"--no-translations", dstExe});
+            if (deploy.waitForFinished(60000) && deploy.exitCode() == 0) {
+                report(progress, 57, "  Qt DLLs deployed for runtime installer (windeployqt).");
+            } else {
+                report(progress, 57, "  WARN: windeployqt failed for runtime installer — "
+                                     "copy Qt DLLs manually to the package root.");
+            }
+        } else {
+            report(progress, 57, "  INFO: windeployqt not found — "
+                                 "runtime installer may need Qt DLLs alongside it.");
+        }
     } else {
         report(progress, 55, "  INFO: Mcaster1Installer.exe not found — omitting from package.");
         report(progress, 56, "        Build runtime/build/Mcaster1Installer.exe then rebuild.");
@@ -160,6 +182,34 @@ QString WindowsBackend::findRuntimeExe() const
         if (QFile::exists(canonical))
             return canonical;
     }
+    return QString();
+}
+
+// ── Private: findWinDeployQt ──────────────────────────────────────────────────
+QString WindowsBackend::findWinDeployQt() const
+{
+#ifdef Q_OS_WIN
+    // Common Qt installation paths for windeployqt.exe
+    const QStringList qtRoots = {
+        "C:/Qt/6.10.2/msvc2022_64/bin",
+        "C:/Qt/6.9.3/msvc2022_64/bin",
+        "C:/Qt/6.9.1/msvc2022_64/bin",
+        "C:/Qt/6.8.3/msvc2022_64/bin",
+        "C:/Qt/6.7.3/msvc2022_64/bin",
+    };
+    for (const QString &dir : qtRoots) {
+        const QString path = dir + "/windeployqt.exe";
+        if (QFile::exists(path))
+            return path;
+    }
+    // Also try the Qt dir that's on PATH (if Qt VS Tools set it up)
+    const QString qtDir = qEnvironmentVariable("QT_MSVC_DIR");
+    if (!qtDir.isEmpty()) {
+        const QString path = qtDir + "/bin/windeployqt.exe";
+        if (QFile::exists(path))
+            return path;
+    }
+#endif
     return QString();
 }
 

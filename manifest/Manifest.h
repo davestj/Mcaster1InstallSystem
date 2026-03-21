@@ -124,6 +124,9 @@ struct AppInfo {
     QString identifier;   // reverse-DNS: com.example.myapp
     QString iconPath;     // relative to project root
     QString licenseFile;  // path to LICENSE.txt / .rtf shown in wizard
+    QString outputName;   // optional: override generated installer filename stem
+                          // e.g. "MyApp-Setup" → MyApp-Setup-win64.zip
+                          //   (omit to use default: <Publisher>-<Name>-<Version>-<platform>)
 };
 
 // ── InstallDefaults ───────────────────────────────────────────────────────────

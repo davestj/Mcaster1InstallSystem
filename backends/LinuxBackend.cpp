@@ -36,6 +36,9 @@ QStringList LinuxBackend::validate(const Manifest &m, const QString &projectDir)
 
 QString LinuxBackend::outputFilename(const Manifest &m) const
 {
+    if (!m.app.outputName.isEmpty())
+        return m.app.outputName.trimmed().toLower().replace(' ', '-') + "-linux-amd64.deb";
+
     return QString("%1-%2-%3-linux-amd64.deb")
         .arg(m.app.publisher.toLower().replace(' ', '-'))
         .arg(m.app.name.toLower().replace(' ', '-'))

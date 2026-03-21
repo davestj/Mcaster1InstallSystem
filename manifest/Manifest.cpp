@@ -62,6 +62,8 @@ QString Manifest::toYaml() const
     ts << "  icon:        " << yq(app.iconPath)      << "\n";
     if (!app.licenseFile.isEmpty())
     ts << "  license:     " << yq(app.licenseFile)   << "\n";
+    if (!app.outputName.isEmpty())
+    ts << "  output-name: " << yq(app.outputName)    << "\n";
 
     // ── defaults ──────────────────────────────────────────────────────────────
     ts << "\ndefaults:\n";
@@ -348,6 +350,7 @@ bool Manifest::fromYaml(const QString &yaml, QString *errOut)
             else if (k == "identifier")  app.identifier  = v;
             else if (k == "icon")        app.iconPath    = v;
             else if (k == "license")     app.licenseFile = v;
+            else if (k == "output-name") app.outputName  = v;
             continue;
         }
 

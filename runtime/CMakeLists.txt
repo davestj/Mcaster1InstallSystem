@@ -108,9 +108,12 @@ if(APPLE)
         MACOSX_BUNDLE_ICON_FILE mcaster1.icns
     )
 else()
+    # Windows: embed .rc resource (icon + version info)
+    set(WIN_RC ${CMAKE_CURRENT_SOURCE_DIR}/../windows/res/Mcaster1Installer.rc)
     add_executable(Mcaster1Installer WIN32
         ${RUNTIME_SOURCES}
         ${RUNTIME_HEADERS}
+        ${WIN_RC}
     )
 endif()
 
@@ -124,6 +127,20 @@ if(MSVC)
     target_compile_options(Mcaster1Installer PRIVATE /W3)
 else()
     target_compile_options(Mcaster1Installer PRIVATE -Wall -Wextra -Wno-unused-parameter)
+endif()
+
+# ── Windows: windeployqt post-build (runtime installer needs its own Qt DLLs) ─
+if(WIN32)
+    find_program(WINDEPLOYQT windeployqt
+        HINTS "${Qt6_DIR}/../../../bin" "$ENV{QT_MSVC_DIR}/bin")
+    if(WINDEPLOYQT)
+        add_custom_command(TARGET Mcaster1Installer POST_BUILD
+            COMMAND "${WINDEPLOYQT}"
+                    "--no-translations"
+                    "$<TARGET_FILE:Mcaster1Installer>"
+            COMMENT "windeployqt: copying Qt DLLs for runtime installer"
+        )
+    endif()
 endif()
 
 install(TARGETS Mcaster1Installer

@@ -188,6 +188,9 @@ QStringList MacOsBackend::validate(const Manifest &m, const QString &projectDir)
 QString MacOsBackend::outputFilename(const Manifest &m) const
 {
     QString arch = QSysInfo::currentCpuArchitecture() == "arm64" ? "arm64" : "x86_64";
+    if (!m.app.outputName.isEmpty()) {
+        return m.app.outputName.trimmed().replace(' ', '_') + "-macOS-" + arch + ".dmg";
+    }
     return QString("%1-%2-%3-macOS-%4-installer.dmg")
         .arg(m.app.publisher.isEmpty() ? "Mcaster1" : m.app.publisher)
         .arg(m.app.name.isEmpty()      ? "App"       : m.app.name)

@@ -39,6 +39,9 @@ private:
     // Searches relative to applicationDirPath() and the runtime/build/ tree.
     QString findRuntimeExe() const;
 
+    // Locate windeployqt.exe from the active Qt installation.
+    QString findWinDeployQt() const;
+
     // Copy src directory tree into dst, creating dst if needed.
     bool copyDir(const QString &src, const QString &dst) const;
 
