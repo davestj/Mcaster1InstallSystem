@@ -249,13 +249,17 @@ bool WindowsBackend::zipDir(const QString &srcDir, const QString &zipPath,
     QProcess p;
 
 #if defined(Q_OS_WIN)
-    // PowerShell Compress-Archive — available on all Windows 8+ systems
-    const QString cmd = QString(
-        "powershell -NoProfile -NonInteractive -Command "
-        "\"Compress-Archive -Path '%1\\*' -DestinationPath '%2' -Force\"")
-        .arg(QDir::toNativeSeparators(srcDir),
-             QDir::toNativeSeparators(zipPath));
-    p.start("cmd.exe", {"/C", cmd});
+    // Call powershell.exe directly — avoids cmd.exe quoting pitfalls.
+    // QProcess passes each entry as a separate CreateProcess argument so
+    // spaces in paths are handled safely inside the single-quoted PS strings.
+    const QString src = QDir::toNativeSeparators(srcDir);
+    const QString dst = QDir::toNativeSeparators(zipPath);
+    p.start("powershell.exe", {
+        "-NoProfile", "-NonInteractive", "-ExecutionPolicy", "Bypass",
+        "-Command",
+        QString("Compress-Archive -Path '%1\\*' -DestinationPath '%2' -Force")
+            .arg(src, dst)
+    });
 #else
     // POSIX zip — always available on macOS; install on Linux: apt install zip
     const QString parentDir = QFileInfo(srcDir).absolutePath();
