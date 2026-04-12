@@ -30,7 +30,7 @@
       <!-- Treat warnings as errors (informational), multi-processor build -->
       <MultiProcessorCompilation>true</MultiProcessorCompilation>
 
-      <!-- Windows target: Vista+ (Qt6 minimum) -->
+      <!-- Windows target: Windows 11+ (0x0A00 = NT 10.0, shared by Win10/Win11) -->
       <PreprocessorDefinitions>
         _WIN32_WINNT=0x0A00;
         WINVER=0x0A00;

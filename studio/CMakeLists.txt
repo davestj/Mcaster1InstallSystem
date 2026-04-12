@@ -168,6 +168,11 @@ target_link_libraries(Mcaster1InstallStudio PRIVATE
 # ── Compiler flags ────────────────────────────────────────────────────────────
 if(MSVC)
     target_compile_options(Mcaster1InstallStudio PRIVATE /W3)
+    # Merge our custom manifest (Windows 11 + DPI awareness + UAC) into the
+    # linker-generated embedded manifest — avoids duplicate RT_MANIFEST conflict.
+    target_link_options(Mcaster1InstallStudio PRIVATE
+        "/MANIFESTINPUT:${CMAKE_CURRENT_SOURCE_DIR}/../windows/res/Mcaster1InstallStudio.manifest"
+    )
 else()
     target_compile_options(Mcaster1InstallStudio PRIVATE -Wall -Wextra -Wno-unused-parameter)
 endif()

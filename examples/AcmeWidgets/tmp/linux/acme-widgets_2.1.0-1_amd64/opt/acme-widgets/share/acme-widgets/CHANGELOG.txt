@@ -42,7 +42,7 @@ New Features:
 
 Breaking Changes:
   • Configuration format changed from XML to INI — see migration guide
-  • Minimum OS: macOS 12, Windows 10, Ubuntu 20.04 / Debian 11
+  • Minimum OS: macOS 12, Windows 11, Ubuntu 20.04 / Debian 11
 
 ────────────────────────────────────────────────────────────────────────────
 Version 1.8.2  (2024-01-10)

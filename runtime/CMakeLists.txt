@@ -125,6 +125,13 @@ target_link_libraries(Mcaster1Installer PRIVATE
 
 if(MSVC)
     target_compile_options(Mcaster1Installer PRIVATE /W3)
+    # requireAdministrator UAC — set via linker flag so it owns the trustInfo
+    # section (avoids mt.exe conflict with auto-generated manifest).
+    # Merge our custom manifest (Windows 11 compat + DPI) as additional input.
+    target_link_options(Mcaster1Installer PRIVATE
+        "/MANIFESTUAC:level='requireAdministrator' uiAccess='false'"
+        "/MANIFESTINPUT:${CMAKE_CURRENT_SOURCE_DIR}/../windows/res/Mcaster1Installer.manifest"
+    )
 else()
     target_compile_options(Mcaster1Installer PRIVATE -Wall -Wextra -Wno-unused-parameter)
 endif()

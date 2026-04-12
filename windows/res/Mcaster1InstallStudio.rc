@@ -4,6 +4,9 @@
 #include <windows.h>
 
 // ── Application Icon ────────────────────────────────────────────────────────
+// NOTE: The application manifest (Windows 11, DPI, UAC) is injected via
+// CMake /MANIFESTINPUT: so it merges with the linker-generated manifest
+// without creating a duplicate RT_MANIFEST resource.
 // mcaster1.ico: 7-size ICO (16,24,32,48,64,128,256) generated from mcaster1.svg
 // Embedded here so Windows Explorer, taskbar, Start Menu, Alt+Tab all show the icon.
 #define IDI_APPICON 1

@@ -100,12 +100,10 @@ Stage-File "$CliSrc\Qt6Concurrentd.dll"   "$PayloadDir\Qt6Concurrentd.dll" # alr
 
 # ── Docs + Examples + License ─────────────────────────────────────────────────
 Write-Host ""
-Write-Host "[4/4] Staging docs/, examples/, LICENSE ..."
-Stage-Dir  "$ProjectRoot\docs"     "$PayloadDir\docs"
-Stage-Dir  "$ProjectRoot\examples" "$PayloadDir\examples"
-$licPath = "$ProjectRoot\LICENSE"
-if (-not (Test-Path $licPath)) { $licPath = "$ProjectRoot\LICENSE.txt" }
-if (Test-Path $licPath) { Stage-File $licPath "$PayloadDir\LICENSE.txt" }
+Write-Host "[4/4] Staging docs/, examples/, LICENSE.md ..."
+Stage-Dir  "$ProjectRoot\docs"        "$PayloadDir\docs"
+Stage-Dir  "$ProjectRoot\examples"    "$PayloadDir\examples"
+Stage-File "$ProjectRoot\LICENSE.md"  "$PayloadDir\LICENSE.md"
 
 # ── Summary ──────────────────────────────────────────────────────────────────
 Write-Host ""

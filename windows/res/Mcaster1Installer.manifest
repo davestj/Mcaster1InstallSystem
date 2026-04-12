@@ -36,14 +36,8 @@
     </windowsSettings>
   </application>
 
-  <!-- UAC: requireAdministrator — installer needs admin to write to Program Files -->
-  <trustInfo xmlns="urn:schemas-microsoft-com:asm.v2">
-    <security>
-      <requestedPrivileges>
-        <requestedExecutionLevel level="requireAdministrator" uiAccess="false" />
-      </requestedPrivileges>
-    </security>
-  </trustInfo>
+  <!-- UAC: requireAdministrator — declared via /MANIFESTUAC: linker flag,
+       not here, to avoid conflict with the linker-auto-generated trustInfo. -->
 
   <compatibility xmlns="urn:schemas-microsoft-com:compatibility.v1">
     <application>

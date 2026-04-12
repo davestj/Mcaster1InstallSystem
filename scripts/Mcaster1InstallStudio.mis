@@ -31,7 +31,7 @@ app:
     No NSIS, no WiX, no Inno Setup — fully self-contained native runtime.
   identifier:  "com.mcaster1.installstudio"
   icon:        "resources/icons/mcaster1.ico"
-  license:     "LICENSE"
+  license:     "LICENSE.md"
   url:         "https://mcaster1.com"
   support-url: "https://mcaster1.com/support"
 
@@ -82,9 +82,9 @@ prerequisites:
     install:   "https://aka.ms/vs/17/release/vc_redist.x64.exe"
     platforms: [windows]
 
-  - id:        win10
-    name:      "Windows 10 or later (64-bit)"
-    check:     "ver | findstr /R \"10\\. 11\\.\" && echo ok"
+  - id:        win11
+    name:      "Windows 11 or later (64-bit)"
+    check:     "ver | findstr /R \"10\\.0\\.2[2-9][0-9][0-9][0-9]\\. 10\\.0\\.[3-9][0-9]\" && echo ok"
     platforms: [windows]
 
 # ── Components ────────────────────────────────────────────────────────────────
@@ -142,7 +142,7 @@ components:
     description: >-
       Qt6 platform plugin (qwindows.dll), SVG icon engine, image format plugins,
       network information, TLS backends, and Windows style plugin required for
-      the Studio IDE to render correctly on all Windows 10/11 configurations.
+      the Studio IDE to render correctly on all Windows 11+ configurations.
     required:  true
     selected:  true
     app-group: studio
@@ -219,6 +219,8 @@ components:
       - src:   "payload/docs"
         dst:   "{install-dir}/docs"
         isDir: true
+      - src:   "payload/LICENSE.md"
+        dst:   "{install-dir}/LICENSE.md"
 
   - id:        examples
     name:      "Example .mis Projects"
