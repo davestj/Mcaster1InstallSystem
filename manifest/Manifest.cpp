@@ -10,13 +10,20 @@
 // ══════════════════════════════════════════════════════════════════════════════
 namespace {
 
-// Quote a YAML scalar value — add quotes if it contains special chars
+// Quote a YAML scalar value — add quotes if it contains special chars.
+// Values with backslashes (Windows paths, registry keys) are emitted as
+// single-quoted YAML so the literal '\' is preserved without escaping.
+// Values with single-quotes fall back to double-quoted with \\ escaping.
 static QString yq(const QString &v)
 {
     if (v.isEmpty()) return "\"\"";
-    static const QRegularExpression needsQuote("[:#\\[\\]{}|>&!'\",\\n\\r]");
-    if (needsQuote.match(v).hasMatch() || v.startsWith(' ') || v.endsWith(' '))
-        return '"' + QString(v).replace('"', "\\\"") + '"';
+    // Use single-quoted YAML for values containing backslash but no single-quote —
+    // this keeps Windows paths readable: 'C:\Program Files\...' vs "C:\\..."
+    if (v.contains('\\') && !v.contains('\''))
+        return '\'' + v + '\'';
+    static const QRegularExpression needsDoubleQuote("[:#\\\\\\[\\]{}|>&!'\",\\n\\r]");
+    if (needsDoubleQuote.match(v).hasMatch() || v.startsWith(' ') || v.endsWith(' '))
+        return '"' + QString(v).replace('\\', "\\\\").replace('"', "\\\"") + '"';
     return v;
 }
 
@@ -242,9 +249,18 @@ static QString stripLine(const QString &line)
 static QString unquote(const QString &v)
 {
     QString s = v.trimmed();
-    if ((s.startsWith('"') && s.endsWith('"')) ||
-        (s.startsWith('\'') && s.endsWith('\'')))
-        s = s.mid(1, s.length() - 2).replace("\\\"", "\"");
+    if (s.startsWith('"') && s.endsWith('"')) {
+        s = s.mid(1, s.length() - 2);
+        // Process double-quoted YAML escape sequences
+        s.replace("\\\\", "\x01");   // protect real backslash (temp placeholder)
+        s.replace("\\\"", "\"");
+        s.replace("\\n",  "\n");
+        s.replace("\\t",  "\t");
+        s.replace("\x01", "\\");     // restore real backslash
+    } else if (s.startsWith('\'') && s.endsWith('\'')) {
+        s = s.mid(1, s.length() - 2);
+        s.replace("''", "'");        // only escape in single-quoted YAML
+    }
     return s;
 }
 

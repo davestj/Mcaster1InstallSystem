@@ -14,7 +14,7 @@ format: mis/1
 #   - Qt6 DLLs + plugins           — All required Qt6 runtime DLLs
 #   - docs/                        — HTML help documentation
 #   - examples/                    — 4 annotated .mis example projects
-#   - LICENSE                      — MIT license
+#   - LICENSE.md                   — MIT license
 #   - Desktop + Start Menu shortcuts
 #   - Windows registry entries (install path, version, app registration)
 #   - Uninstaller entry in Add/Remove Programs
@@ -38,7 +38,7 @@ app:
 # ── Install defaults ──────────────────────────────────────────────────────────
 defaults:
   install-dir:
-    windows: "C:\\Program Files\\Mcaster1\\Mcaster1InstallStudio"
+    windows: 'C:\Program Files\Mcaster1\Mcaster1InstallStudio'
   require-admin:    true
   allow-custom-dir: true
   launch-after:     true
@@ -259,74 +259,74 @@ shortcuts:
 registry:
   # ── Uninstall / Add-Remove Programs entry ─────────────────────────────────
   - hive:  HKLM
-    key:   "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Mcaster1InstallStudio"
+    key:   'SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Mcaster1InstallStudio'
     value: "DisplayName"
     data:  "Mcaster1 Install Studio"
     type:  REG_SZ
 
   - hive:  HKLM
-    key:   "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Mcaster1InstallStudio"
+    key:   'SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Mcaster1InstallStudio'
     value: "DisplayVersion"
     data:  "1.0.0"
     type:  REG_SZ
 
   - hive:  HKLM
-    key:   "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Mcaster1InstallStudio"
+    key:   'SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Mcaster1InstallStudio'
     value: "Publisher"
     data:  "Mcaster1"
     type:  REG_SZ
 
   - hive:  HKLM
-    key:   "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Mcaster1InstallStudio"
+    key:   'SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Mcaster1InstallStudio'
     value: "URLInfoAbout"
     data:  "https://mcaster1.com"
     type:  REG_SZ
 
   - hive:  HKLM
-    key:   "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Mcaster1InstallStudio"
+    key:   'SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Mcaster1InstallStudio'
     value: "URLUpdateInfo"
     data:  "https://mcaster1.com/releases"
     type:  REG_SZ
 
   - hive:  HKLM
-    key:   "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Mcaster1InstallStudio"
+    key:   'SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Mcaster1InstallStudio'
     value: "HelpLink"
     data:  "https://mcaster1.com/support"
     type:  REG_SZ
 
   - hive:  HKLM
-    key:   "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Mcaster1InstallStudio"
+    key:   'SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Mcaster1InstallStudio'
     value: "InstallLocation"
     data:  "{install-dir}"
     type:  REG_SZ
 
   - hive:  HKLM
-    key:   "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Mcaster1InstallStudio"
+    key:   'SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Mcaster1InstallStudio'
     value: "NoModify"
     data:  "1"
     type:  REG_DWORD
 
   - hive:  HKLM
-    key:   "SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\Uninstall\\Mcaster1InstallStudio"
+    key:   'SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\Mcaster1InstallStudio'
     value: "NoRepair"
     data:  "1"
     type:  REG_DWORD
 
   # ── Product install path (for other tools / integrations to locate Studio) ─
   - hive:  HKLM
-    key:   "SOFTWARE\\Mcaster1\\InstallStudio"
+    key:   'SOFTWARE\Mcaster1\InstallStudio'
     value: "InstallPath"
     data:  "{install-dir}"
     type:  REG_SZ
 
   - hive:  HKLM
-    key:   "SOFTWARE\\Mcaster1\\InstallStudio"
+    key:   'SOFTWARE\Mcaster1\InstallStudio'
     value: "Version"
     data:  "1.0.0"
     type:  REG_SZ
 
   - hive:  HKLM
-    key:   "SOFTWARE\\Mcaster1\\InstallStudio"
+    key:   'SOFTWARE\Mcaster1\InstallStudio'
     value: "Publisher"
     data:  "David StJohn / Mcaster1"
     type:  REG_SZ
@@ -345,26 +345,26 @@ registry:
     type:  REG_SZ
 
   - hive:  HKCR
-    key:   "Mcaster1.InstallerProject\\DefaultIcon"
+    key:   'Mcaster1.InstallerProject\DefaultIcon'
     value: ""
-    data:  "{install-dir}\\Mcaster1InstallStudio.exe,0"
+    data:  '{install-dir}\Mcaster1InstallStudio.exe,0'
     type:  REG_SZ
 
   - hive:  HKCR
-    key:   "Mcaster1.InstallerProject\\shell\\open\\command"
+    key:   'Mcaster1.InstallerProject\shell\open\command'
     value: ""
-    data:  "\"{install-dir}\\Mcaster1InstallStudio.exe\" \"%1\""
+    data:  '"{install-dir}\Mcaster1InstallStudio.exe" "%1"'
     type:  REG_SZ
 
   # ── Per-user: track first-run and install date ──────────────────────────────
   - hive:  HKCU
-    key:   "SOFTWARE\\Mcaster1\\InstallStudio"
+    key:   'SOFTWARE\Mcaster1\InstallStudio'
     value: "FirstRun"
     data:  "1"
     type:  REG_DWORD
 
   - hive:  HKCU
-    key:   "SOFTWARE\\Mcaster1\\InstallStudio"
+    key:   'SOFTWARE\Mcaster1\InstallStudio'
     value: "InstalledBy"
     data:  "David StJohn"
     type:  REG_SZ
