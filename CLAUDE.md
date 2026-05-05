@@ -1,9 +1,9 @@
 # CLAUDE.md — Mcaster1 Install System
 
-> **Last updated:** 2026-03-03
+> **Last updated:** 2026-03-04
 > **Version:** 1.0.0
-> **Active branch:** `main`
-> **Next phase:** Phase 10 — Windows & Linux native builds + CI/CD matrix
+> **Active branch:** `windows-dev` (master = macOS only)
+> **Next phase:** Phase 10 — Linux native builds + CI/CD GitHub Actions matrix
 
 This is the authoritative context document for Claude Code sessions working on this project.
 Read it at the start of every session.
@@ -17,9 +17,9 @@ an InstallShield / InstallAnywhere equivalent built with Qt6. It has three binar
 
 | Binary | Purpose |
 |--------|---------|
-| `Mcaster1InstallStudio.app` | IDE for creating and building `.mis` installer projects |
-| `Mcaster1Installer.app/.exe` | Runtime wizard end-users run to install an application |
-| `miscc` | Headless CLI compiler — builds installer packages from `.mis` files |
+| `Mcaster1InstallStudio.exe/.app` | IDE for creating and building `.mis` installer projects |
+| `Mcaster1Installer.exe/.app` | Runtime wizard end-users run to install an application |
+| `miscc` / `miscc.exe` | Headless CLI compiler — builds installer packages from `.mis` files |
 
 **NOT** an installer for Mcaster1DNAS — this is a general-purpose tool for any application.
 
@@ -33,109 +33,117 @@ Mcaster1InstallSystem/
   CLAUDE.md                                  # This file
   CHANGELOG.md                               # All releases
   README.md                                  # End-user documentation
+  LICENSE.md                                 # MIT license
   docs/index.html                            # In-app help (opened from Help menu)
 
   manifest/          Manifest.h + Manifest.cpp  (.mis YAML data model — no libyaml)
   backends/          MacOsBackend / WindowsBackend / LinuxBackend / CodeSigner / CertGenerator
   importers/         NsisImporter / InnoSetupImporter  (import only — never invokes compiler)
 
-  studio/            Qt6 IDE (Mcaster1InstallStudio.app)
-    CMakeLists.txt   Qt6 Widgets+Svg+SvgWidgets+Concurrent
+  studio/            Qt6 IDE
+    CMakeLists.txt   Qt6 Widgets+Svg+SvgWidgets+Concurrent; WIN32 RC + /MANIFESTINPUT: on Windows
     StudioMainWindow.h/cpp   Multi-project IDE + 9-tab editor + sidebar + dock log + status bar
     ProjectSidebar           VS-style tree: projects + app groups; right-click context menus
-    AppInfoEditor            App name/version/publisher/icon/license/defaults/theme/targets
-    FilesEditor              Component + file assignment table
-    ComponentsEditor         Dependency flags, required/optional
-    ShortcutsEditor          Desktop / Start Menu shortcuts
-    RegistryEditor           Windows registry entries (HKLM/HKCU, REG_SZ/DWORD/EXPAND_SZ)
-    SecurityEditor           Signing credentials (macOS / Windows / Linux)
-    PrerequisitesEditor      Prerequisite check commands per platform
-    CustomActionsEditor      Before/after install/uninstall custom commands
-    BuildPanel               Platform checkboxes + signing status + build queue + Test Installer
-    BuilderProfile.h         Per-user company/signing profiles (JSON, AppConfigLocation)
-    BuilderProfileDialog     Edit profile: identity + Signing Mode (skip / ad-hoc / identity)
-    CodeSignDialog           Full code-signing dialog (sign + notarize + certs)
-    HelpPanel                In-app docs viewer (QTextBrowser)
-    EventLog.h               Timestamped color-coded dock log (Info/Build/Warn/Error/Success)
-    BuildHistory.h           Persistent JSON dock log of every build
-    SvgIcons.h               32 inline SVG action icons (24×24 dark theme)
-    StudioStyle.h            Qt dark + enterprise stylesheets + ThemeManager
+    AppInfoEditor / FilesEditor / ComponentsEditor / ShortcutsEditor / RegistryEditor
+    SecurityEditor / PrerequisitesEditor / CustomActionsEditor / BuildPanel
+    BuilderProfile.h / BuilderProfileDialog / CodeSignDialog / HelpPanel
+    EventLog.h / BuildHistory.h / SvgIcons.h / StudioStyle.h
 
-  runtime/           Qt6 Installer Wizard (Mcaster1Installer.app)
+  runtime/           Qt6 Installer Wizard
+    CMakeLists.txt   WIN32 RC + /MANIFESTUAC:requireAdministrator + /MANIFESTINPUT: on Windows
     InstallerWizard  QWizard hub (8 pages; PageId 0-7)
-    WelcomePage / LicensePage / PrerequisitesPage / ComponentsPage /
-    DirectoryPage / ReadyPage / InstallPage / FinishPage
     InstallEngine    QThread: file copy, registry, shortcuts, custom actions, uninstall manifest
 
-  cli/               Headless CLI compiler (miscc)
+  cli/               Headless CLI compiler (miscc / miscc.exe)
     miscc.cpp        QCoreApplication only (no GUI); 12 flags; ANSI colour output
-    CMakeLists.txt   Qt6 Core + Concurrent only
-    build/miscc      Compiled binary (macOS arm64)
+    CMakeLists.txt   Qt6 Core + Concurrent only; windeployqt post-build on Windows
 
   resources/
     icons/mcaster1.svg    Canonical app icon (SVG)
-    icons/mcaster1.icns   Built from SVG by rsvg-convert+iconutil at cmake time
+    icons/mcaster1.icns   macOS icon (rsvg-convert+iconutil at cmake time)
+    icons/mcaster1.ico    Windows icon (7-size ICO: 16,24,32,48,64,128,256 — Pillow-generated)
+    icons/png/            Individual PNGs at all sizes
+
+  windows/
+    Mcaster1InstallSystem.sln      VS2022 solution (3 projects — CMake preferred)
+    res/Mcaster1InstallStudio.rc   Version info + icon; manifest via /MANIFESTINPUT:
+    res/Mcaster1InstallStudio.manifest  Windows 11 compat + PerMonitorV2 DPI + asInvoker UAC
+    res/Mcaster1Installer.rc       Version info + icon; manifest via /MANIFESTINPUT: + /MANIFESTUAC:
+    res/Mcaster1Installer.manifest Windows 11 compat + PerMonitorV2 DPI (UAC via linker flag)
+    res/mcaster1.ico               Copy of resources/icons/mcaster1.ico for RC compiler
+    props/Qt6.props                Qt6 auto-detection (6.10.2, 6.9.3, 6.9.1, 6.8.3, 6.7.3)
+    props/Common.props             MSVC flags: C++17, _WIN32_WINNT=0x0A00 (Windows 11 target)
+
+  scripts/
+    Mcaster1InstallStudio.mis      Self-installer manifest (dogfood build)
+    stage-payload.ps1              Stages all build outputs into scripts/payload/ with windeployqt
+    generate-icons.py              Renders mcaster1.svg to ICO+PNGs using Pillow (no Cairo needed)
+    payload/                       Staged payload dir (gitignored — regenerate with stage-payload.ps1)
 
   examples/
-    AcmeWidgets/          Full cross-platform example with real payload structure
-    SimpleNotepad/        Minimal 2-platform starter example
-    DevSuite/             Enterprise 3-app-group example (full signing, all platforms)
-    StreamServer/         Media server daemon + GUI pattern (macOS + Linux)
+    AcmeWidgets/      Full cross-platform example with real payload structure (min OS: Windows 11)
+    SimpleNotepad/    Minimal 2-platform starter example
+    DevSuite/         Enterprise 3-app-group example (full signing, all platforms)
+    StreamServer/     Media server daemon + GUI pattern (macOS + Linux)
 ```
 
 ---
 
-## Build Commands
+## Build Commands — Windows
 
-### Prerequisites (macOS)
 ```bash
-brew install qt librsvg
+# Prerequisites: Qt 6.9.3 at C:\Qt\6.9.3\msvc2022_64, VS2022 Professional, CMake 4.2.3
+
+# CLI (miscc.exe)
+cmake -B cli/build-win -S cli -DCMAKE_PREFIX_PATH="C:/Qt/6.9.3/msvc2022_64" -G "Visual Studio 17 2022" -A x64
+cmake --build cli/build-win --config Debug
+
+# Studio IDE
+cmake -B studio/build-win -S studio -DCMAKE_PREFIX_PATH="C:/Qt/6.9.3/msvc2022_64" -G "Visual Studio 17 2022" -A x64
+cmake --build studio/build-win --config Debug
+
+# Runtime Installer
+cmake -B runtime/build-win -S runtime -DCMAKE_PREFIX_PATH="C:/Qt/6.9.3/msvc2022_64" -G "Visual Studio 17 2022" -A x64
+cmake --build runtime/build-win --config Debug
 ```
 
-### Studio IDE
-```bash
-cmake -B studio/build -S studio \
-  -DCMAKE_PREFIX_PATH=$(brew --prefix qt) \
-  -DCMAKE_BUILD_TYPE=Debug
+Outputs: `*/build-win/Debug/*.exe` — windeployqt runs automatically post-build.
 
+### Build Self-Installer (Windows)
+```bash
+# Stage payload (run from project root in PowerShell or Git Bash)
+powershell -File scripts/stage-payload.ps1
+
+# Build installer package
+cli/build-win/Debug/miscc.exe -f scripts/Mcaster1InstallStudio.mis --platform=windows --no-sign --output-dir=dist
+
+# Sign all four EXEs with self-signed PFX
+SIGNTOOL="/c/Program Files (x86)/Windows Kits/10/bin/10.0.26100.0/x64/signtool.exe"
+PFX="C:/Users/dstjohn/codesigning/mcaster1/installstudio/mcaster1-installstudio.pfx"
+PASS="Mcaster1Dev2026!"
+for exe in dist/*/Mcaster1Installer.exe dist/*/payload/{Mcaster1InstallStudio,Mcaster1Installer,miscc}.exe; do
+  "$SIGNTOOL" sign -fd sha256 -f "$PFX" -p "$PASS" -tr "http://timestamp.sectigo.com" -td sha256 "$exe"
+done
+```
+
+---
+
+## Build Commands — macOS
+
+```bash
+brew install qt librsvg
+
+cmake -B studio/build -S studio -DCMAKE_PREFIX_PATH=$(brew --prefix qt) -DCMAKE_BUILD_TYPE=Debug
 cmake --build studio/build -j$(sysctl -n hw.logicalcpu)
 codesign --force --sign - studio/build/Mcaster1InstallStudio.app
 open studio/build/Mcaster1InstallStudio.app
-```
 
-### Runtime Installer
-```bash
-cmake -B runtime/build -S runtime \
-  -DCMAKE_PREFIX_PATH=$(brew --prefix qt) \
-  -DCMAKE_BUILD_TYPE=Debug
-
+cmake -B runtime/build -S runtime -DCMAKE_PREFIX_PATH=$(brew --prefix qt) -DCMAKE_BUILD_TYPE=Debug
 cmake --build runtime/build -j$(sysctl -n hw.logicalcpu)
 codesign --force --sign - runtime/build/Mcaster1Installer.app
-```
 
-### miscc CLI
-```bash
 cmake -B cli/build -S cli -DCMAKE_PREFIX_PATH=$(brew --prefix qt) -DCMAKE_BUILD_TYPE=Release
 cmake --build cli/build -j$(sysctl -n hw.logicalcpu)
-
-# All flags:
-cli/build/miscc --help
-cli/build/miscc --version
-cli/build/miscc --list-profiles
-cli/build/miscc -f <file.mis> --list-platforms
-cli/build/miscc -f <file.mis> --dry-run --verbose --no-sign
-cli/build/miscc -f <file.mis> --platform=macos --output-dir=~/dist
-cli/build/miscc -f <file.mis> --platform=windows --no-sign
-cli/build/miscc -f <file.mis> --profile="My Profile" --notarize
-cli/build/miscc -f <file.mis> --signing-id="Developer ID Application: ACME (XXXXX)"
-cli/build/miscc -f <file.mis> --pfx=path/to/cert.pfx
-```
-
-### One-liner rebuild + launch
-```bash
-cmake --build studio/build -j$(sysctl -n hw.logicalcpu) && \
-codesign --force --sign - studio/build/Mcaster1InstallStudio.app && \
-open studio/build/Mcaster1InstallStudio.app
 ```
 
 ---
@@ -146,20 +154,52 @@ See `examples/` for full annotated examples. Key sections:
 
 ```yaml
 format: mis/1
-app:            # name, version, publisher, identifier, icon, license, url, support-url
+app:            # name, version, publisher, identifier, icon, license, output-name, url, support-url
 defaults:       # install-dir (per platform), require-admin, allow-custom-dir, launch-after
 theme:          # accent-color, background, dark-mode, banner-image, sidepanel-image
-signing:        # macos-signer, macos-team-id, macos-notarize, win-pfx-path, linux-gpg-key
+signing:        # macos-signer, macos-team-id, macos-notarize, win-pfx-path, win-timestamp, linux-gpg-key
 app-groups:     # id + name groupings for multi-app projects
 prerequisites:  # id, name, check (shell cmd → "ok"), install (URL or cmd), platforms
 components:     # id, name, required, selected, app-group, depends, files[]
 shortcuts:      # name, target, type (app|url)
 registry:       # hive, key, value, data, type — Windows only
 custom-actions: # id, trigger (before/after-install/uninstall), type (shell), command, platforms
-targets:        # [macos, windows, linux]
+targets:        # block-style list only — see gotchas
 ```
 
 Token substitution in paths: `{install-dir}`, `{name}`, `{version}`, `{publisher}`
+
+### output-name field (AppInfo)
+Optional override for the generated installer filename stem:
+```yaml
+app:
+  output-name: "MyApp-Setup"   # → MyApp-Setup-win64.zip / MyApp-Setup-macOS-arm64.dmg
+```
+Omit to use the default: `<Publisher>-<Name>-<Version>-<platform>`.
+
+### Windows paths in .mis — use single-quoted YAML
+Single-quoted YAML strings treat `\` as literal — no escaping needed:
+```yaml
+defaults:
+  install-dir:
+    windows: 'C:\Program Files\Mcaster1\MyApp'   # correct
+    # NOT: "C:\\Program Files\\Mcaster1\\MyApp"   # ugly and error-prone
+registry:
+  - key: 'SOFTWARE\Microsoft\Windows\CurrentVersion\Uninstall\MyApp'
+```
+
+---
+
+## YAML Parser Notes (IMPORTANT)
+
+- **`targets:`** section ONLY parses block-style lists — `- windows` on separate lines.
+  `targets: [windows]` inline format is **silently ignored**.
+- **`win-timestamp`** not `win-timestamp-url` for the signing section key.
+- **Double-quoted strings**: parser now correctly handles `\\` → `\`, `\"` → `"`, `\n` → newline.
+- **Single-quoted strings**: `\` is literal, `''` → `'`. Preferred for Windows paths.
+- **Serializer (toYaml/yq())**: values containing `\` are auto-emitted as single-quoted YAML.
+- Validate with: `miscc.exe -f X.mis --dry-run --verbose --no-sign`
+- Signing key name: `win-pfx-password` (not `win-pfx-pass`), `win-timestamp` (not `win-timestamp-url`)
 
 ---
 
@@ -197,17 +237,71 @@ inside `onBuildClicked()` at build-time — the `.mis` file on disk is never mut
 
 ---
 
-## WindowsBackend — No NSIS, No External Compiler
+## WindowsBackend
 
-`WindowsBackend` is our own native packager. It does NOT invoke `makensis.exe`,
-`iscc.exe`, or any third-party tool. Output: `<name>-win64-setup.zip` containing:
-- `manifest.mis` — project manifest
-- `payload/` — application files
-- `Mcaster1Installer.exe` — bundled runtime (if found in runtime/build/)
-- `LICENSE.txt` — if declared in manifest
+Native packager — does NOT invoke `makensis.exe`, `iscc.exe`, or any third-party tool.
 
-The importer (`NsisImporter`, `InnoSetupImporter`) converts `.nsi`/`.iss` scripts
-**into our format** for editing. No import path ever invokes the original compiler.
+Output structure in `<output-dir>/<name>-win64-setup/`:
+- `manifest.mis` — project manifest (serialized with single-quoted Windows paths)
+- `payload/` — application files copied from project `payload/`
+- `Mcaster1Installer.exe` — bundled runtime (found via `findRuntimeExe()`)
+- Qt DLLs at package root (deployed by `findWinDeployQt()` → windeployqt on runtime exe)
+- `LICENSE.md` — if declared in manifest
+
+**Runtime exe search order** (`findRuntimeExe()`): flat layout alongside studio/miscc →
+`runtime/build-win/Debug/` → `runtime/build-win/Release/` → VS `windows/x64/` paths.
+
+**Zip step**: calls `powershell.exe` directly (NOT via `cmd.exe /C`) to avoid nested-quote
+mangling with `Compress-Archive`. Runs ~15s for a 150 MB payload.
+
+---
+
+## Windows App Manifests
+
+Both `.manifest` files declare:
+- Windows 11 compatibility GUID `{8e0f7a12-bfb3-4fe8-b9a5-48fd50a15a9a}`
+- PerMonitorV2 DPI awareness
+- UAC level is set via linker flags (NOT in the manifest XML) to avoid mt.exe conflict:
+  - Studio: `/MANIFESTUAC:` not set (defaults to asInvoker)
+  - Installer: `/MANIFESTUAC:"level='requireAdministrator' uiAccess='false'"`
+- Both use `/MANIFESTINPUT:` to merge the custom manifest into the linker-generated one.
+
+---
+
+## Windows Code Signing
+
+**Tool:** `signtool.exe` at `C:\Program Files (x86)\Windows Kits\10\bin\10.0.26100.0\x64\`
+
+**Self-signed cert:** `~/codesigning/mcaster1/installstudio/mcaster1-installstudio.pfx`
+Password: `Mcaster1Dev2026!` · Valid to: 2036-03-01 · Thumbprint: `3BB088045454DC2B7A57B7F46789091E54459A54`
+
+**Sign command:**
+```bash
+signtool sign -fd sha256 -f path/to.pfx -p <password> \
+  -tr "http://timestamp.sectigo.com" -td sha256 Target.exe
+```
+
+**After install — fix Windows SmartScreen block:**
+1. Import cert to Trusted Root CAs (one-time per machine):
+   ```powershell
+   $cert = New-Object System.Security.Cryptography.X509Certificates.X509Certificate2
+   $cert.Import('~/codesigning/mcaster1/installstudio/mcaster1-installstudio.crt')
+   $store = New-Object System.Security.Cryptography.X509Certificates.X509Store('Root','LocalMachine')
+   $store.Open('ReadWrite'); $store.Add($cert); $store.Close()
+   ```
+2. Remove Mark-of-the-Web from installed files:
+   ```powershell
+   # Save as C:\Temp\unblock.ps1 and run:
+   Get-ChildItem -Recurse 'C:\Program Files\Mcaster1\Mcaster1InstallStudio' -Include '*.exe','*.dll' |
+       ForEach-Object { Unblock-File $_.FullName }
+   ```
+
+**Note:** SmartScreen will always block self-signed certs on machines without the cert in Trusted Root.
+For public distribution, purchase a commercial EV code signing cert (DigiCert, Sectigo, etc.).
+
+**vcredist dependency:** Debug builds require Visual C++ 2022 Redistributable because
+`vcruntime140d.dll` is not redistributable and windeployqt doesn't bundle debug CRT DLLs.
+Release builds: windeployqt bundles `vcruntime140.dll` automatically.
 
 ---
 
@@ -260,27 +354,15 @@ static QIcon si(const char *svg, int sz = 16) {
 | Pre-9 | WindowsBackend rewrite — native packager (no NSIS) | ✅ COMPLETE |
 | Pre-9 | miscc CLI — all 12 flags, dry-run, profile support | ✅ COMPLETE |
 | Pre-9 | 3 new example manifests (SimpleNotepad, DevSuite, StreamServer) | ✅ COMPLETE |
-| **10** | **Windows & Linux native builds + CI/CD GitHub Actions** | **PLANNED** |
-
----
-
-## Phase 10 — Windows & Linux Builds (PLANNED NEXT)
-
-### Windows build environment
-- Visual Studio 2022 (MSVC) + Qt6 MSVC build
-- `cmake -B studio/build-win -S studio -DCMAKE_PREFIX_PATH=C:/Qt/6.x.x/msvc2022_64`
-- Output: `studio/build-win/Release/Mcaster1InstallStudio.exe`
-- miscc CLI: `cmake -B cli/build-win -S cli` → `cli/build-win/Release/miscc.exe`
-
-### Linux build environment
-- Ubuntu 22.04 LTS (primary CI target)
-- `cmake -B studio/build-linux -S studio -DCMAKE_PREFIX_PATH=/usr/lib/x86_64-linux-gnu/cmake/Qt6`
-- miscc CLI: `cmake -B cli/build-linux -S cli` → `cli/build-linux/miscc`
-
-### CI/CD (GitHub Actions matrix)
-- `jobs.build.strategy.matrix.os: [macos-latest, ubuntu-22.04, windows-2022]`
-- Artifact upload per platform
-- AcmeWidgets example dry-run validated on each OS
+| 10a | Windows builds (miscc.exe + Studio + Installer) — Debug confirmed | ✅ COMPLETE |
+| 10a | Windows ICO icon, RC resource, app manifests (Win11 + DPI + UAC) | ✅ COMPLETE |
+| 10a | Self-installer manifest + stage-payload.ps1 + dogfood build | ✅ COMPLETE |
+| 10a | YAML parser fix (backslash escaping, single-quoted output) | ✅ COMPLETE |
+| 10a | output-name field for custom installer filename | ✅ COMPLETE |
+| 10a | Self-signed PFX cert + signtool signing + SmartScreen fix | ✅ COMPLETE |
+| 10a | LICENSE.md (MIT) | ✅ COMPLETE |
+| **10b** | **Linux native builds** | **PLANNED** |
+| **10c** | **CI/CD GitHub Actions matrix** | **PLANNED** |
 
 ---
 
@@ -288,8 +370,6 @@ static QIcon si(const char *svg, int sz = 16) {
 
 - **clangd false positives** — cross-project LSP confusion causes phantom "unused include"
   warnings in backend files. All confirmed spurious; builds succeed cleanly.
-- **`_encode/_decode: command not found`** in cmake output — benign shell completion
-  artifact from the user's shell environment; does not affect build.
 - **codesign required on macOS after every build** — macOS caches the code directory;
   stale cache causes SIGKILL on launch. Always run `codesign --force --sign -` before `open`.
 - **Build button must go through `onBuildStart()`** — do NOT connect the Build button
@@ -297,3 +377,14 @@ static QIcon si(const char *svg, int sz = 16) {
   is the only one that calls `collectEditors()` first.
 - **WindowsBackend never calls makensis** — the `.nsi` importer is read-only. Any code
   that shells out to `makensis`, `iscc`, or similar must be removed immediately.
+- **`targets:` must use block-style** — `targets: [windows]` is silently ignored by the parser.
+- **Windows manifest conflict** — do NOT embed RT_MANIFEST (type 24) in the .rc file AND
+  use `/MANIFESTINPUT:`. The linker auto-generates a manifest; use `/MANIFESTINPUT:` to
+  merge your custom one, and `/MANIFESTUAC:` for UAC level. Mixing both causes
+  "duplicate resource" or mt.exe "level attribute mismatch" errors.
+- **SmartScreen blocks self-signed EXEs** — on new machines, import the cert to
+  Local Machine Trusted Root CAs and run `Unblock-File` on all installed EXEs/DLLs.
+- **MOTW (Mark of the Web)** — zip files and their extracted contents get a Zone.Identifier
+  ADS that Windows uses to block execution. `Unblock-File` removes it.
+- **Debug CRT not redistributable** — windeployqt does NOT bundle `vcruntime140d.dll`.
+  Debug builds require VS2022 or VC++ Redist on the target machine.
